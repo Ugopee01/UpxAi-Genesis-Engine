@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useGetSignal, useExecuteTrade, getGetSignalQueryKey } from "@workspace/api-client-react";
+import { Link } from "wouter";
+import { useGetSignal, useExecuteTrade, useListExchanges, getGetSignalQueryKey, getListExchangesQueryKey } from "@workspace/api-client-react";
 import { SignalBadge } from "@/components/ui/signal-badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -7,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { CandlestickChart, AlertTriangle, ShieldAlert, Zap, Terminal } from "lucide-react";
+import { AlertTriangle, ShieldAlert, ShieldCheck, Zap, Terminal, Plug } from "lucide-react";
 
 export default function TradeConsole() {
   const [symbol, setSymbol] = useState("BTCUSDT");
@@ -18,6 +19,12 @@ export default function TradeConsole() {
     { symbol },
     { query: { queryKey: getGetSignalQueryKey({ symbol }) } }
   );
+
+  const { data: exchangeData } = useListExchanges({
+    query: { queryKey: getListExchangesQueryKey(), refetchInterval: 60000 },
+  });
+  const connectedExchange = exchangeData?.exchanges?.find((e) => e.configured);
+  const hasConnectedExchange = (exchangeData?.connectedCount ?? 0) > 0;
 
   const executeTradeMutation = useExecuteTrade({
     mutation: {
@@ -81,19 +88,40 @@ export default function TradeConsole() {
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <Label className="text-sm font-bold text-foreground block">Live Execution Mode</Label>
-                  <p className="text-xs text-muted-foreground mt-0.5">Real funds on connected exchange</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {hasConnectedExchange
+                      ? `Routes orders through ${connectedExchange?.name}`
+                      : "Real funds on connected exchange"}
+                  </p>
                 </div>
                 <Switch
                   checked={liveMode}
                   onCheckedChange={setLiveMode}
-                  disabled
+                  disabled={!hasConnectedExchange}
                   className="data-[state=checked]:bg-primary shrink-0"
                 />
               </div>
-              <div className="flex items-start gap-2.5 p-3 rounded bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs font-mono">
-                <ShieldAlert className="h-4 w-4 shrink-0 mt-0.5" />
-                <p>Live mode locked — simulated trading is active.</p>
-              </div>
+              {!hasConnectedExchange ? (
+                <div className="flex items-start gap-2.5 p-3 rounded bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs font-mono">
+                  <ShieldAlert className="h-4 w-4 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p>Live mode locked — no exchange connected.</p>
+                    <Link href="/exchanges" className="inline-flex items-center gap-1 mt-1.5 text-amber-300 hover:text-amber-200 underline-offset-2 hover:underline">
+                      <Plug className="h-3 w-3" /> Connect an exchange →
+                    </Link>
+                  </div>
+                </div>
+              ) : liveMode ? (
+                <div className="flex items-start gap-2.5 p-3 rounded bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-mono">
+                  <ShieldAlert className="h-4 w-4 shrink-0 mt-0.5" />
+                  <p>Live mode armed — orders would route to {connectedExchange?.name}. <span className="text-rose-200">For safety, execution is still simulated in this build.</span></p>
+                </div>
+              ) : (
+                <div className="flex items-start gap-2.5 p-3 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono">
+                  <ShieldCheck className="h-4 w-4 shrink-0 mt-0.5" />
+                  <p>{connectedExchange?.name} connected. Toggle on to arm live execution.</p>
+                </div>
+              )}
             </div>
 
             {signalData && (
@@ -119,7 +147,7 @@ export default function TradeConsole() {
               ) : (
                 <div className="flex items-center gap-2">
                   <Zap className="h-4 w-4" />
-                  EXECUTE SIMULATED TRADE
+                  {liveMode ? `EXECUTE VIA ${connectedExchange?.name?.toUpperCase()}` : "EXECUTE SIMULATED TRADE"}
                 </div>
               )}
             </Button>

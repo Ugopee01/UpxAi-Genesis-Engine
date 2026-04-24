@@ -90,6 +90,58 @@ export interface ErrorResponse {
   error: string;
 }
 
+export type ExchangeStatusExchange =
+  (typeof ExchangeStatusExchange)[keyof typeof ExchangeStatusExchange];
+
+export const ExchangeStatusExchange = {
+  binance: "binance",
+  bybit: "bybit",
+} as const;
+
+export type ExchangeStatusLastTestStatus =
+  (typeof ExchangeStatusLastTestStatus)[keyof typeof ExchangeStatusLastTestStatus];
+
+export const ExchangeStatusLastTestStatus = {
+  ok: "ok",
+  error: "error",
+  untested: "untested",
+} as const;
+
+export interface ExchangeStatus {
+  exchange: ExchangeStatusExchange;
+  name: string;
+  configured: boolean;
+  apiKeyMasked?: string;
+  lastTestedAt?: string;
+  lastTestStatus: ExchangeStatusLastTestStatus;
+  lastTestMessage?: string;
+}
+
+export interface ExchangeListResponse {
+  exchanges: ExchangeStatus[];
+  connectedCount: number;
+}
+
+export interface ExchangeCredentialsRequest {
+  apiKey: string;
+  apiSecret: string;
+}
+
+export type ExchangeTestResponseExchange =
+  (typeof ExchangeTestResponseExchange)[keyof typeof ExchangeTestResponseExchange];
+
+export const ExchangeTestResponseExchange = {
+  binance: "binance",
+  bybit: "bybit",
+} as const;
+
+export interface ExchangeTestResponse {
+  exchange: ExchangeTestResponseExchange;
+  success: boolean;
+  message: string;
+  testedAt: string;
+}
+
 export type GetSignalParams = {
   symbol?: string;
 };

@@ -18,6 +18,10 @@ import type {
 
 import type {
   ErrorResponse,
+  ExchangeCredentialsRequest,
+  ExchangeListResponse,
+  ExchangeStatus,
+  ExchangeTestResponse,
   GetMarketDataParams,
   GetSignalParams,
   HealthStatus,
@@ -465,3 +469,342 @@ export function useGetSignalHistory<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List supported exchanges and their connection status
+ */
+export const getListExchangesUrl = () => {
+  return `/api/exchanges`;
+};
+
+export const listExchanges = async (
+  options?: RequestInit,
+): Promise<ExchangeListResponse> => {
+  return customFetch<ExchangeListResponse>(getListExchangesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListExchangesQueryKey = () => {
+  return [`/api/exchanges`] as const;
+};
+
+export const getListExchangesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listExchanges>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listExchanges>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListExchangesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listExchanges>>> = ({
+    signal,
+  }) => listExchanges({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listExchanges>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListExchangesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listExchanges>>
+>;
+export type ListExchangesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List supported exchanges and their connection status
+ */
+
+export function useListExchanges<
+  TData = Awaited<ReturnType<typeof listExchanges>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listExchanges>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListExchangesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Save API credentials for an exchange
+ */
+export const getConnectExchangeUrl = (exchange: "binance" | "bybit") => {
+  return `/api/exchanges/${exchange}/connect`;
+};
+
+export const connectExchange = async (
+  exchange: "binance" | "bybit",
+  exchangeCredentialsRequest: ExchangeCredentialsRequest,
+  options?: RequestInit,
+): Promise<ExchangeStatus> => {
+  return customFetch<ExchangeStatus>(getConnectExchangeUrl(exchange), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(exchangeCredentialsRequest),
+  });
+};
+
+export const getConnectExchangeMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof connectExchange>>,
+    TError,
+    {
+      exchange: "binance" | "bybit";
+      data: BodyType<ExchangeCredentialsRequest>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof connectExchange>>,
+  TError,
+  { exchange: "binance" | "bybit"; data: BodyType<ExchangeCredentialsRequest> },
+  TContext
+> => {
+  const mutationKey = ["connectExchange"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof connectExchange>>,
+    {
+      exchange: "binance" | "bybit";
+      data: BodyType<ExchangeCredentialsRequest>;
+    }
+  > = (props) => {
+    const { exchange, data } = props ?? {};
+
+    return connectExchange(exchange, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ConnectExchangeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof connectExchange>>
+>;
+export type ConnectExchangeMutationBody = BodyType<ExchangeCredentialsRequest>;
+export type ConnectExchangeMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Save API credentials for an exchange
+ */
+export const useConnectExchange = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof connectExchange>>,
+    TError,
+    {
+      exchange: "binance" | "bybit";
+      data: BodyType<ExchangeCredentialsRequest>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof connectExchange>>,
+  TError,
+  { exchange: "binance" | "bybit"; data: BodyType<ExchangeCredentialsRequest> },
+  TContext
+> => {
+  return useMutation(getConnectExchangeMutationOptions(options));
+};
+
+/**
+ * @summary Remove saved credentials for an exchange
+ */
+export const getDisconnectExchangeUrl = (exchange: "binance" | "bybit") => {
+  return `/api/exchanges/${exchange}/disconnect`;
+};
+
+export const disconnectExchange = async (
+  exchange: "binance" | "bybit",
+  options?: RequestInit,
+): Promise<ExchangeStatus> => {
+  return customFetch<ExchangeStatus>(getDisconnectExchangeUrl(exchange), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getDisconnectExchangeMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof disconnectExchange>>,
+    TError,
+    { exchange: "binance" | "bybit" },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof disconnectExchange>>,
+  TError,
+  { exchange: "binance" | "bybit" },
+  TContext
+> => {
+  const mutationKey = ["disconnectExchange"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof disconnectExchange>>,
+    { exchange: "binance" | "bybit" }
+  > = (props) => {
+    const { exchange } = props ?? {};
+
+    return disconnectExchange(exchange, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DisconnectExchangeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof disconnectExchange>>
+>;
+
+export type DisconnectExchangeMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Remove saved credentials for an exchange
+ */
+export const useDisconnectExchange = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof disconnectExchange>>,
+    TError,
+    { exchange: "binance" | "bybit" },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof disconnectExchange>>,
+  TError,
+  { exchange: "binance" | "bybit" },
+  TContext
+> => {
+  return useMutation(getDisconnectExchangeMutationOptions(options));
+};
+
+/**
+ * @summary Test the connection to an exchange using stored credentials
+ */
+export const getTestExchangeUrl = (exchange: "binance" | "bybit") => {
+  return `/api/exchanges/${exchange}/test`;
+};
+
+export const testExchange = async (
+  exchange: "binance" | "bybit",
+  options?: RequestInit,
+): Promise<ExchangeTestResponse> => {
+  return customFetch<ExchangeTestResponse>(getTestExchangeUrl(exchange), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getTestExchangeMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof testExchange>>,
+    TError,
+    { exchange: "binance" | "bybit" },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof testExchange>>,
+  TError,
+  { exchange: "binance" | "bybit" },
+  TContext
+> => {
+  const mutationKey = ["testExchange"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof testExchange>>,
+    { exchange: "binance" | "bybit" }
+  > = (props) => {
+    const { exchange } = props ?? {};
+
+    return testExchange(exchange, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TestExchangeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof testExchange>>
+>;
+
+export type TestExchangeMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Test the connection to an exchange using stored credentials
+ */
+export const useTestExchange = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof testExchange>>,
+    TError,
+    { exchange: "binance" | "bybit" },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof testExchange>>,
+  TError,
+  { exchange: "binance" | "bybit" },
+  TContext
+> => {
+  return useMutation(getTestExchangeMutationOptions(options));
+};

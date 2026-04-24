@@ -7,6 +7,13 @@
  */
 
 export * from "./errorResponse";
+export * from "./exchangeCredentialsRequest";
+export * from "./exchangeListResponse";
+export * from "./exchangeStatus";
+export * from "./exchangeStatusExchange";
+export * from "./exchangeStatusLastTestStatus";
+export * from "./exchangeTestResponse";
+export * from "./exchangeTestResponseExchange";
 export * from "./getMarketDataParams";
 export * from "./getSignalParams";
 export * from "./healthStatus";

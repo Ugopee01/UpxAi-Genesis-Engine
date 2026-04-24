@@ -6,6 +6,7 @@ import { Layout } from "@/components/layout";
 import Dashboard from "@/pages/dashboard";
 import SignalHistory from "@/pages/signal-history";
 import TradeConsole from "@/pages/trade-console";
+import Exchanges from "@/pages/exchanges";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -16,6 +17,7 @@ function Router() {
       <Route path="/" component={Dashboard} />
       <Route path="/signals" component={SignalHistory} />
       <Route path="/trade" component={TradeConsole} />
+      <Route path="/exchanges" component={Exchanges} />
       <Route component={NotFound} />
     </Switch>
   );

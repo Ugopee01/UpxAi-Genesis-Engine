@@ -1,13 +1,21 @@
 import { Link, useLocation } from "wouter";
-import { Activity, History, CandlestickChart } from "lucide-react";
+import { Activity, History, CandlestickChart, Plug } from "lucide-react";
+import { useListExchanges, getListExchangesQueryKey } from "@workspace/api-client-react";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
+
+  const { data: exchangeData } = useListExchanges({
+    query: { queryKey: getListExchangesQueryKey(), refetchInterval: 60000 },
+  });
+  const connectedExchange = exchangeData?.exchanges?.find((e) => e.configured);
+  const connectedCount = exchangeData?.connectedCount ?? 0;
 
   const navItems = [
     { href: "/", label: "Dashboard", icon: Activity },
     { href: "/trade", label: "Trade", icon: CandlestickChart },
     { href: "/signals", label: "Signals", icon: History },
+    { href: "/exchanges", label: "Exchanges", icon: Plug },
   ];
 
   return (
@@ -45,7 +53,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
             })}
           </nav>
 
-          <div className="ml-auto flex items-center space-x-3">
+          <div className="ml-auto flex items-center space-x-2">
+            {/* Connected exchange badge */}
+            <Link
+              href="/exchanges"
+              className={`hidden md:flex items-center gap-1.5 text-xs font-mono border px-2.5 py-1 rounded-md transition-colors ${
+                connectedCount > 0
+                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+                  : "border-border/50 bg-muted/30 text-muted-foreground hover:text-foreground"
+              }`}
+              title={connectedCount > 0 ? `Connected: ${connectedExchange?.name}` : "No exchange connected"}
+            >
+              <Plug className="h-3 w-3" />
+              <span className="hidden lg:inline">{connectedCount > 0 ? `LINKED: ${connectedExchange?.name?.toUpperCase()}` : "NO EXCHANGE"}</span>
+              <span className="lg:hidden">{connectedCount > 0 ? connectedExchange?.name?.toUpperCase() : "NONE"}</span>
+            </Link>
             <div className="flex items-center gap-1.5 text-xs font-mono border border-border/50 bg-muted/30 px-2.5 py-1 rounded-md">
               <span className="relative flex h-1.5 w-1.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -76,7 +98,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center justify-center gap-1 px-6 py-2 rounded-lg transition-all duration-200 min-w-[72px] ${
+                className={`flex flex-col items-center justify-center gap-1 px-2 py-2 rounded-lg transition-all duration-200 flex-1 ${
                   isActive ? "text-primary" : "text-muted-foreground"
                 }`}
               >

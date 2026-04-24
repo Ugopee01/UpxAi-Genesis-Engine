@@ -11,6 +11,8 @@ tags:
     description: Health operations
   - name: trading
     description: Trading signal and execution operations
+  - name: exchanges
+    description: Exchange connection management
 paths:
   /healthz:
     get:
@@ -114,6 +116,87 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SignalHistoryResponse"
+  /exchanges:
+    get:
+      operationId: listExchanges
+      tags: [exchanges]
+      summary: List supported exchanges and their connection status
+      responses:
+        "200":
+          description: Exchange list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExchangeListResponse"
+  /exchanges/{exchange}/connect:
+    post:
+      operationId: connectExchange
+      tags: [exchanges]
+      summary: Save API credentials for an exchange
+      parameters:
+        - name: exchange
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [binance, bybit]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExchangeCredentialsRequest"
+      responses:
+        "200":
+          description: Connection saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExchangeStatus"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /exchanges/{exchange}/disconnect:
+    post:
+      operationId: disconnectExchange
+      tags: [exchanges]
+      summary: Remove saved credentials for an exchange
+      parameters:
+        - name: exchange
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [binance, bybit]
+      responses:
+        "200":
+          description: Connection removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExchangeStatus"
+  /exchanges/{exchange}/test:
+    post:
+      operationId: testExchange
+      tags: [exchanges]
+      summary: Test the connection to an exchange using stored credentials
+      parameters:
+        - name: exchange
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [binance, bybit]
+      responses:
+        "200":
+          description: Test result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExchangeTestResponse"
 components:
   schemas:
     HealthStatus:
@@ -247,3 +330,66 @@ components:
           type: string
       required:
         - error
+    ExchangeStatus:
+      type: object
+      properties:
+        exchange:
+          type: string
+          enum: [binance, bybit]
+        name:
+          type: string
+        configured:
+          type: boolean
+        apiKeyMasked:
+          type: string
+        lastTestedAt:
+          type: string
+        lastTestStatus:
+          type: string
+          enum: [ok, error, untested]
+        lastTestMessage:
+          type: string
+      required:
+        - exchange
+        - name
+        - configured
+        - lastTestStatus
+    ExchangeListResponse:
+      type: object
+      properties:
+        exchanges:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExchangeStatus"
+        connectedCount:
+          type: integer
+      required:
+        - exchanges
+        - connectedCount
+    ExchangeCredentialsRequest:
+      type: object
+      properties:
+        apiKey:
+          type: string
+        apiSecret:
+          type: string
+      required:
+        - apiKey
+        - apiSecret
+    ExchangeTestResponse:
+      type: object
+      properties:
+        exchange:
+          type: string
+          enum: [binance, bybit]
+        success:
+          type: boolean
+        message:
+          type: string
+        testedAt:
+          type: string
+      required:
+        - exchange
+        - success
+        - message
+        - testedAt

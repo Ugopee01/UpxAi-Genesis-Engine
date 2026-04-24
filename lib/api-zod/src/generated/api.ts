@@ -93,3 +93,74 @@ export const GetSignalHistoryResponse = zod.object({
     }),
   ),
 });
+
+/**
+ * @summary List supported exchanges and their connection status
+ */
+export const ListExchangesResponse = zod.object({
+  exchanges: zod.array(
+    zod.object({
+      exchange: zod.enum(["binance", "bybit"]),
+      name: zod.string(),
+      configured: zod.boolean(),
+      apiKeyMasked: zod.string().optional(),
+      lastTestedAt: zod.string().optional(),
+      lastTestStatus: zod.enum(["ok", "error", "untested"]),
+      lastTestMessage: zod.string().optional(),
+    }),
+  ),
+  connectedCount: zod.number(),
+});
+
+/**
+ * @summary Save API credentials for an exchange
+ */
+export const ConnectExchangeParams = zod.object({
+  exchange: zod.enum(["binance", "bybit"]),
+});
+
+export const ConnectExchangeBody = zod.object({
+  apiKey: zod.string(),
+  apiSecret: zod.string(),
+});
+
+export const ConnectExchangeResponse = zod.object({
+  exchange: zod.enum(["binance", "bybit"]),
+  name: zod.string(),
+  configured: zod.boolean(),
+  apiKeyMasked: zod.string().optional(),
+  lastTestedAt: zod.string().optional(),
+  lastTestStatus: zod.enum(["ok", "error", "untested"]),
+  lastTestMessage: zod.string().optional(),
+});
+
+/**
+ * @summary Remove saved credentials for an exchange
+ */
+export const DisconnectExchangeParams = zod.object({
+  exchange: zod.enum(["binance", "bybit"]),
+});
+
+export const DisconnectExchangeResponse = zod.object({
+  exchange: zod.enum(["binance", "bybit"]),
+  name: zod.string(),
+  configured: zod.boolean(),
+  apiKeyMasked: zod.string().optional(),
+  lastTestedAt: zod.string().optional(),
+  lastTestStatus: zod.enum(["ok", "error", "untested"]),
+  lastTestMessage: zod.string().optional(),
+});
+
+/**
+ * @summary Test the connection to an exchange using stored credentials
+ */
+export const TestExchangeParams = zod.object({
+  exchange: zod.enum(["binance", "bybit"]),
+});
+
+export const TestExchangeResponse = zod.object({
+  exchange: zod.enum(["binance", "bybit"]),
+  success: zod.boolean(),
+  message: zod.string(),
+  testedAt: zod.string(),
+});
