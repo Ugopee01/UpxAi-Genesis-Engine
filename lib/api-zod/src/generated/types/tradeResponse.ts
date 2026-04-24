@@ -6,9 +6,19 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { TradeResponseExecuted } from "./tradeResponseExecuted";
+import type { TradeResponseMode } from "./tradeResponseMode";
+import type { TradeResponseStatus } from "./tradeResponseStatus";
+import type { TradeResponseTargetExchange } from "./tradeResponseTargetExchange";
 
 export interface TradeResponse {
   executed: TradeResponseExecuted;
   simulated: boolean;
   liveMode: boolean;
+  mode: TradeResponseMode;
+  targetExchange?: TradeResponseTargetExchange;
+  orderId?: string;
+  executedQty?: number;
+  executedQuoteQty?: number;
+  status: TradeResponseStatus;
+  error?: string;
 }

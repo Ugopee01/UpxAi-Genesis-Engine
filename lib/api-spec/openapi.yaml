@@ -114,8 +114,8 @@ paths:
     post:
       operationId: executeTrade
       tags: [trading]
-      summary: Execute a simulated trade
-      description: Executes a simulated trade based on the current signal
+      summary: Execute a trade (simulated by default, live when armed and confirmed)
+      description: Executes a trade based on the current signal. Defaults to dry-run; routes a real spot order to the connected exchange when liveMode and confirmLive are both true.
       requestBody:
         content:
           application/json:
@@ -292,6 +292,21 @@ components:
         liveMode:
           type: boolean
           default: false
+        confirmLive:
+          type: boolean
+          default: false
+          description: Must be true when liveMode is true to actually place a real order
+        side:
+          type: string
+          enum: [BUY, SELL]
+          description: Override the signal direction; defaults to the current signal
+        quantityUsdt:
+          type: number
+          description: Order notional in USDT (quote currency). Required when liveMode is true.
+        targetExchange:
+          type: string
+          enum: [binance, bybit]
+          description: Which connected exchange to route the order to. Defaults to first available.
     TradeResponse:
       type: object
       properties:
@@ -319,10 +334,29 @@ components:
           type: boolean
         liveMode:
           type: boolean
+        mode:
+          type: string
+          enum: [LIVE, SIMULATED]
+        targetExchange:
+          type: string
+          enum: [binance, bybit]
+        orderId:
+          type: string
+        executedQty:
+          type: number
+        executedQuoteQty:
+          type: number
+        status:
+          type: string
+          enum: [FILLED, ACCEPTED, FAILED, SIMULATED]
+        error:
+          type: string
       required:
         - executed
         - simulated
         - liveMode
+        - mode
+        - status
     MarketDataResponse:
       type: object
       properties:
@@ -364,6 +398,23 @@ components:
         price:
           type: number
         timestamp:
+          type: string
+        mode:
+          type: string
+          enum: [LIVE, SIMULATED]
+        status:
+          type: string
+          enum: [FILLED, ACCEPTED, FAILED, SIMULATED]
+        targetExchange:
+          type: string
+          enum: [binance, bybit]
+        orderId:
+          type: string
+        executedQty:
+          type: number
+        executedQuoteQty:
+          type: number
+        error:
           type: string
       required:
         - signal

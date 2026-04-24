@@ -65,15 +65,38 @@ export const GetSignalResponse = zod.object({
 });
 
 /**
- * Executes a simulated trade based on the current signal
- * @summary Execute a simulated trade
+ * Executes a trade based on the current signal. Defaults to dry-run; routes a real spot order to the connected exchange when liveMode and confirmLive are both true.
+ * @summary Execute a trade (simulated by default, live when armed and confirmed)
  */
 export const executeTradeBodySymbolDefault = `BTCUSDT`;
 export const executeTradeBodyLiveModeDefault = false;
+export const executeTradeBodyConfirmLiveDefault = false;
 
 export const ExecuteTradeBody = zod.object({
   symbol: zod.string().default(executeTradeBodySymbolDefault),
   liveMode: zod.boolean().default(executeTradeBodyLiveModeDefault),
+  confirmLive: zod
+    .boolean()
+    .default(executeTradeBodyConfirmLiveDefault)
+    .describe(
+      "Must be true when liveMode is true to actually place a real order",
+    ),
+  side: zod
+    .enum(["BUY", "SELL"])
+    .optional()
+    .describe("Override the signal direction; defaults to the current signal"),
+  quantityUsdt: zod
+    .number()
+    .optional()
+    .describe(
+      "Order notional in USDT (quote currency). Required when liveMode is true.",
+    ),
+  targetExchange: zod
+    .enum(["binance", "bybit"])
+    .optional()
+    .describe(
+      "Which connected exchange to route the order to. Defaults to first available.",
+    ),
 });
 
 export const ExecuteTradeResponse = zod.object({
@@ -86,6 +109,13 @@ export const ExecuteTradeResponse = zod.object({
   }),
   simulated: zod.boolean(),
   liveMode: zod.boolean(),
+  mode: zod.enum(["LIVE", "SIMULATED"]),
+  targetExchange: zod.enum(["binance", "bybit"]).optional(),
+  orderId: zod.string().optional(),
+  executedQty: zod.number().optional(),
+  executedQuoteQty: zod.number().optional(),
+  status: zod.enum(["FILLED", "ACCEPTED", "FAILED", "SIMULATED"]),
+  error: zod.string().optional(),
 });
 
 /**
@@ -121,6 +151,15 @@ export const GetSignalHistoryResponse = zod.object({
       rsi: zod.number(),
       price: zod.number(),
       timestamp: zod.string(),
+      mode: zod.enum(["LIVE", "SIMULATED"]).optional(),
+      status: zod
+        .enum(["FILLED", "ACCEPTED", "FAILED", "SIMULATED"])
+        .optional(),
+      targetExchange: zod.enum(["binance", "bybit"]).optional(),
+      orderId: zod.string().optional(),
+      executedQty: zod.number().optional(),
+      executedQuoteQty: zod.number().optional(),
+      error: zod.string().optional(),
     }),
   ),
 });

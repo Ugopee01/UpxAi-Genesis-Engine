@@ -457,8 +457,8 @@ export function useGetSignal<
 }
 
 /**
- * Executes a simulated trade based on the current signal
- * @summary Execute a simulated trade
+ * Executes a trade based on the current signal. Defaults to dry-run; routes a real spot order to the connected exchange when liveMode and confirmLive are both true.
+ * @summary Execute a trade (simulated by default, live when armed and confirmed)
  */
 export const getExecuteTradeUrl = () => {
   return `/api/trade`;
@@ -521,7 +521,7 @@ export type ExecuteTradeMutationBody = BodyType<TradeRequest>;
 export type ExecuteTradeMutationError = ErrorType<ErrorResponse>;
 
 /**
- * @summary Execute a simulated trade
+ * @summary Execute a trade (simulated by default, live when armed and confirmed)
  */
 export const useExecuteTrade = <
   TError = ErrorType<ErrorResponse>,

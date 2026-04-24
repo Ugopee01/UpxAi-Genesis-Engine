@@ -1,6 +1,12 @@
 import { Router, type IRouter } from "express";
 import axios from "axios";
-import { listSummaries } from "../lib/exchange-store";
+import crypto from "crypto";
+import {
+  type ExchangeId,
+  getRecord,
+  listSummaries,
+  type ExchangeRecord,
+} from "../lib/exchange-store";
 
 const router: IRouter = Router();
 
@@ -12,6 +18,11 @@ const SYMBOL_BASE_PRICES: Record<string, number> = {
   XRPUSDT: 2.28,
   ADAUSDT: 0.88,
 };
+
+// Hard safety rails for live orders. These cap blast radius even if the
+// client is compromised — never rely on UI-side bounds alone.
+const LIVE_MIN_USDT = 5;
+const LIVE_MAX_USDT = 50;
 
 function simulatePrice(symbol: string): number {
   const base = SYMBOL_BASE_PRICES[symbol] ?? 100;
@@ -71,10 +82,28 @@ async function computeSignal(symbol: string) {
   return { signal, symbol, rsi, price, timestamp: new Date().toISOString(), simulated: isSimulated };
 }
 
-function seedHistory() {
+type TradeMode = "LIVE" | "SIMULATED";
+type TradeStatus = "FILLED" | "ACCEPTED" | "FAILED" | "SIMULATED";
+
+interface SignalHistoryEntry {
+  signal: "BUY" | "SELL" | "HOLD";
+  symbol: string;
+  rsi: number;
+  price: number;
+  timestamp: string;
+  mode?: TradeMode;
+  status?: TradeStatus;
+  targetExchange?: ExchangeId;
+  orderId?: string;
+  executedQty?: number;
+  executedQuoteQty?: number;
+  error?: string;
+}
+
+function seedHistory(): SignalHistoryEntry[] {
   const symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BTCUSDT", "BTCUSDT"];
   const now = Date.now();
-  const entries: Array<{ signal: "BUY" | "SELL" | "HOLD"; symbol: string; rsi: number; price: number; timestamp: string }> = [];
+  const entries: SignalHistoryEntry[] = [];
 
   for (let i = 24; i >= 0; i--) {
     const symbol = symbols[i % symbols.length];
@@ -95,54 +124,279 @@ function seedHistory() {
   return entries.reverse();
 }
 
-const signalHistory: Array<{
-  signal: "BUY" | "SELL" | "HOLD";
-  symbol: string;
-  rsi: number;
-  price: number;
-  timestamp: string;
-}> = seedHistory();
+const signalHistory: SignalHistoryEntry[] = seedHistory();
+
+function pushHistory(entry: SignalHistoryEntry) {
+  signalHistory.unshift(entry);
+  if (signalHistory.length > 100) signalHistory.pop();
+}
 
 router.get("/signal", async (req, res) => {
   const symbol = (req.query.symbol as string) || "BTCUSDT";
   const result = await computeSignal(symbol);
-  const entry = { signal: result.signal, symbol: result.symbol, rsi: result.rsi, price: result.price, timestamp: result.timestamp };
-  signalHistory.unshift(entry);
-  if (signalHistory.length > 100) signalHistory.pop();
-  res.json(entry);
+  pushHistory({
+    signal: result.signal,
+    symbol: result.symbol,
+    rsi: result.rsi,
+    price: result.price,
+    timestamp: result.timestamp,
+  });
+  res.json({ signal: result.signal, symbol: result.symbol, rsi: result.rsi, price: result.price, timestamp: result.timestamp });
 });
+
+interface LiveOrderResult {
+  status: "FILLED" | "ACCEPTED" | "FAILED";
+  orderId?: string;
+  executedQty?: number;
+  executedQuoteQty?: number;
+  averagePrice?: number;
+  error?: string;
+}
+
+async function placeBinanceOrder(
+  rec: ExchangeRecord,
+  symbol: string,
+  side: "BUY" | "SELL",
+  quoteOrderQty: number,
+): Promise<LiveOrderResult> {
+  try {
+    const timestamp = Date.now();
+    const params = new URLSearchParams({
+      symbol,
+      side,
+      type: "MARKET",
+      quoteOrderQty: quoteOrderQty.toFixed(2),
+      newOrderRespType: "FULL",
+      recvWindow: "5000",
+      timestamp: String(timestamp),
+    });
+    const query = params.toString();
+    const signature = crypto
+      .createHmac("sha256", rec.apiSecret)
+      .update(query)
+      .digest("hex");
+    const url = `https://api.binance.com/api/v3/order?${query}&signature=${signature}`;
+    const r = await axios.post(url, null, {
+      timeout: 10000,
+      headers: { "X-MBX-APIKEY": rec.apiKey },
+    });
+    const d = r.data;
+    const executedQty = parseFloat(d?.executedQty ?? "0");
+    const cummulativeQuoteQty = parseFloat(d?.cummulativeQuoteQty ?? "0");
+    const avg = executedQty > 0 ? cummulativeQuoteQty / executedQty : undefined;
+    // Trust Binance's order status: FILLED only when it really filled,
+    // otherwise treat as accepted (NEW / PARTIALLY_FILLED).
+    const binanceStatus = String(d?.status ?? "").toUpperCase();
+    const status: LiveOrderResult["status"] =
+      binanceStatus === "FILLED" ? "FILLED" : "ACCEPTED";
+    return {
+      status,
+      orderId: String(d?.orderId ?? d?.clientOrderId ?? ""),
+      executedQty,
+      executedQuoteQty: cummulativeQuoteQty,
+      averagePrice: avg,
+    };
+  } catch (err) {
+    const e = err as { response?: { data?: { msg?: string; code?: number } }; message?: string; code?: string };
+    if (e.response?.data?.msg) return { status: "FAILED", error: `Binance: ${e.response.data.msg}` };
+    if (e.code === "ENOTFOUND" || e.code === "EAI_AGAIN" || e.code === "ETIMEDOUT" || e.code === "ECONNREFUSED") {
+      return { status: "FAILED", error: "Binance unreachable from this network. Try after deployment." };
+    }
+    return { status: "FAILED", error: e.message || "Unknown error contacting Binance." };
+  }
+}
+
+async function placeBybitOrder(
+  rec: ExchangeRecord,
+  symbol: string,
+  side: "BUY" | "SELL",
+  quoteOrderQty: number,
+): Promise<LiveOrderResult> {
+  try {
+    const timestamp = Date.now().toString();
+    const recvWindow = "5000";
+    const body = {
+      category: "spot",
+      symbol,
+      side: side === "BUY" ? "Buy" : "Sell",
+      orderType: "Market",
+      qty: quoteOrderQty.toFixed(2),
+      marketUnit: "quoteCoin",
+    };
+    const bodyJson = JSON.stringify(body);
+    const signPayload = timestamp + rec.apiKey + recvWindow + bodyJson;
+    const signature = crypto
+      .createHmac("sha256", rec.apiSecret)
+      .update(signPayload)
+      .digest("hex");
+    const r = await axios.post("https://api.bybit.com/v5/order/create", bodyJson, {
+      timeout: 10000,
+      headers: {
+        "Content-Type": "application/json",
+        "X-BAPI-API-KEY": rec.apiKey,
+        "X-BAPI-SIGN": signature,
+        "X-BAPI-TIMESTAMP": timestamp,
+        "X-BAPI-RECV-WINDOW": recvWindow,
+        "X-BAPI-SIGN-TYPE": "2",
+      },
+    });
+    const ret = r.data;
+    if (ret?.retCode === 0) {
+      const orderId = ret?.result?.orderId ?? ret?.result?.orderLinkId ?? "";
+      // Bybit's create response only confirms acceptance — fill details
+      // require a follow-up query against /v5/order/realtime. Mark this
+      // accurately as ACCEPTED so audit/history isn't misleading.
+      return {
+        status: "ACCEPTED",
+        orderId: String(orderId),
+        executedQuoteQty: quoteOrderQty,
+      };
+    }
+    return { status: "FAILED", error: `Bybit: ${ret?.retMsg || "Unknown response"}` };
+  } catch (err) {
+    const e = err as { response?: { data?: { retMsg?: string } }; message?: string; code?: string };
+    if (e.response?.data?.retMsg) return { status: "FAILED", error: `Bybit: ${e.response.data.retMsg}` };
+    if (e.code === "ENOTFOUND" || e.code === "EAI_AGAIN" || e.code === "ETIMEDOUT" || e.code === "ECONNREFUSED") {
+      return { status: "FAILED", error: "Bybit unreachable from this network. Try after deployment." };
+    }
+    return { status: "FAILED", error: e.message || "Unknown error contacting Bybit." };
+  }
+}
+
+async function placeLiveOrder(
+  exchange: ExchangeId,
+  rec: ExchangeRecord,
+  symbol: string,
+  side: "BUY" | "SELL",
+  quoteOrderQty: number,
+): Promise<LiveOrderResult> {
+  if (exchange === "binance") return placeBinanceOrder(rec, symbol, side, quoteOrderQty);
+  return placeBybitOrder(rec, symbol, side, quoteOrderQty);
+}
 
 router.post("/trade", async (req, res) => {
   const userId = req.user!.id;
   const symbol = (req.body?.symbol as string) || "BTCUSDT";
   const liveMode = req.body?.liveMode === true;
-  const result = await computeSignal(symbol);
-  const executed = { signal: result.signal, symbol: result.symbol, rsi: result.rsi, price: result.price, timestamp: result.timestamp };
-  signalHistory.unshift(executed);
-  if (signalHistory.length > 100) signalHistory.pop();
+  const confirmLive = req.body?.confirmLive === true;
+  const requestedSide = req.body?.side as "BUY" | "SELL" | undefined;
+  const quantityUsdt = Number(req.body?.quantityUsdt);
+  const requestedExchange = req.body?.targetExchange as ExchangeId | undefined;
 
-  // When live mode is armed, log which connected exchange would have
-  // received the order. Order routing remains simulated by design in
-  // this iteration — see follow-up "Actually route live trades to the
-  // connected exchange".
-  let targetExchange: string | undefined;
-  if (liveMode) {
-    const connected = listSummaries(userId);
-    // Prefer an exchange that has passed its test, otherwise fall back to any connected one.
-    targetExchange =
-      connected.find((s) => s.lastTestStatus === "ok")?.exchange ?? connected[0]?.exchange;
-    if (targetExchange) {
-      console.log(
-        `[trade] LIVE armed — would route ${executed.signal} ${executed.symbol} @ ${executed.price} to ${targetExchange} (simulated)`,
-      );
-    } else {
-      console.log(
-        `[trade] LIVE armed but no exchange connected — falling back to simulation for ${executed.signal} ${executed.symbol}`,
-      );
-    }
+  const result = await computeSignal(symbol);
+  const baseExecuted = {
+    signal: result.signal,
+    symbol: result.symbol,
+    rsi: result.rsi,
+    price: result.price,
+    timestamp: result.timestamp,
+  };
+
+  // Default path: dry-run / simulated.
+  if (!liveMode) {
+    pushHistory({ ...baseExecuted, mode: "SIMULATED", status: "SIMULATED" });
+    return res.json({
+      executed: baseExecuted,
+      simulated: true,
+      liveMode: false,
+      mode: "SIMULATED" as const,
+      status: "SIMULATED" as const,
+    });
   }
 
-  res.json({ executed, simulated: !liveMode, liveMode, targetExchange });
+  // Live mode requested — enforce a separate explicit confirmation.
+  if (!confirmLive) {
+    return res.status(400).json({
+      error: "Live execution requires explicit confirmation (confirmLive=true).",
+    });
+  }
+
+  // Resolve the side. Default to the engine's signal; allow override only to
+  // BUY or SELL. HOLD signals can't be turned into a real order.
+  const side: "BUY" | "SELL" | undefined =
+    requestedSide === "BUY" || requestedSide === "SELL"
+      ? requestedSide
+      : result.signal === "BUY" || result.signal === "SELL"
+        ? result.signal
+        : undefined;
+
+  if (!side) {
+    return res.status(400).json({
+      error: "Current signal is HOLD — choose BUY or SELL explicitly to place a live order.",
+    });
+  }
+
+  // Validate notional against hard safety caps.
+  if (!Number.isFinite(quantityUsdt) || quantityUsdt <= 0) {
+    return res.status(400).json({ error: "quantityUsdt must be a positive number." });
+  }
+  if (quantityUsdt < LIVE_MIN_USDT) {
+    return res.status(400).json({ error: `Minimum live order size is ${LIVE_MIN_USDT} USDT.` });
+  }
+  if (quantityUsdt > LIVE_MAX_USDT) {
+    return res.status(400).json({ error: `Maximum live order size is ${LIVE_MAX_USDT} USDT (safety cap).` });
+  }
+
+  // Resolve the target exchange. If the caller named one explicitly, honour
+  // that choice exactly — never silently re-route to a different venue, even
+  // if another exchange is connected. Only fall back when the caller left it
+  // unspecified.
+  const connected = listSummaries(userId);
+  let targetExchange: ExchangeId | undefined;
+  if (requestedExchange) {
+    if (!connected.some((c) => c.exchange === requestedExchange)) {
+      return res.status(400).json({
+        error: `Requested exchange "${requestedExchange}" is not connected — connect it first or omit targetExchange.`,
+      });
+    }
+    targetExchange = requestedExchange;
+  } else {
+    targetExchange =
+      (connected.find((s) => s.lastTestStatus === "ok")?.exchange as ExchangeId | undefined) ??
+      (connected[0]?.exchange as ExchangeId | undefined);
+  }
+  if (!targetExchange) {
+    return res.status(400).json({ error: "No exchange connected — connect one before going live." });
+  }
+
+  const rec = getRecord(userId, targetExchange);
+  if (!rec) {
+    return res.status(400).json({ error: `${targetExchange} credentials missing.` });
+  }
+
+  const orderResult = await placeLiveOrder(targetExchange, rec, symbol, side, quantityUsdt);
+  console.log(
+    `[trade] LIVE ${side} ${symbol} ${quantityUsdt} USDT via ${targetExchange} → ${orderResult.status}` +
+      (orderResult.orderId ? ` orderId=${orderResult.orderId}` : "") +
+      (orderResult.error ? ` error=${orderResult.error}` : ""),
+  );
+
+  // Record the live attempt in the archive regardless of outcome — the user
+  // needs an audit trail of failed live orders too.
+  const executedForHistory = { ...baseExecuted, signal: side };
+  pushHistory({
+    ...executedForHistory,
+    mode: "LIVE",
+    status: orderResult.status,
+    targetExchange,
+    orderId: orderResult.orderId,
+    executedQty: orderResult.executedQty,
+    executedQuoteQty: orderResult.executedQuoteQty,
+    error: orderResult.error,
+  });
+
+  return res.json({
+    executed: executedForHistory,
+    simulated: false,
+    liveMode: true,
+    mode: "LIVE" as const,
+    status: orderResult.status,
+    targetExchange,
+    orderId: orderResult.orderId,
+    executedQty: orderResult.executedQty,
+    executedQuoteQty: orderResult.executedQuoteQty,
+    error: orderResult.error,
+  });
 });
 
 router.get("/market-data", async (req, res) => {

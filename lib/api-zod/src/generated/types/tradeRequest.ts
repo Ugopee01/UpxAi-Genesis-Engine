@@ -5,8 +5,18 @@
  * UPXAI Genesis Engine API
  * OpenAPI spec version: 0.1.0
  */
+import type { TradeRequestSide } from "./tradeRequestSide";
+import type { TradeRequestTargetExchange } from "./tradeRequestTargetExchange";
 
 export interface TradeRequest {
   symbol?: string;
   liveMode?: boolean;
+  /** Must be true when liveMode is true to actually place a real order */
+  confirmLive?: boolean;
+  /** Override the signal direction; defaults to the current signal */
+  side?: TradeRequestSide;
+  /** Order notional in USDT (quote currency). Required when liveMode is true. */
+  quantityUsdt?: number;
+  /** Which connected exchange to route the order to. Defaults to first available. */
+  targetExchange?: TradeRequestTargetExchange;
 }

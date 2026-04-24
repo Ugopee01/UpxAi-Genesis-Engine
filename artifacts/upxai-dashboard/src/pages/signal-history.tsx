@@ -1,7 +1,34 @@
 import { useGetSignalHistory, getGetSignalHistoryQueryKey } from "@workspace/api-client-react";
+import type { SignalHistoryItem } from "@workspace/api-client-react";
 import { SignalBadge } from "@/components/ui/signal-badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { History, Search } from "lucide-react";
+
+function ModeBadge({ item }: { item: SignalHistoryItem }) {
+  if (item.mode !== "LIVE") return null;
+  const failed = item.status === "FAILED";
+  const accepted = item.status === "ACCEPTED";
+  let label = "LIVE";
+  let className =
+    "ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold tracking-widest bg-rose-500/20 border border-rose-500/50 text-rose-200";
+  let title = `Routed via ${item.targetExchange ?? "exchange"}`;
+  if (failed) {
+    label = "LIVE · FAIL";
+    className =
+      "ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold tracking-widest bg-rose-500/15 border border-rose-500/40 text-rose-300";
+    title = item.error || "Live order failed";
+  } else if (accepted) {
+    label = "LIVE · PEND";
+    className =
+      "ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold tracking-widest bg-amber-500/15 border border-amber-500/40 text-amber-200";
+    title = `Accepted by ${item.targetExchange ?? "exchange"} — fill pending`;
+  }
+  return (
+    <span title={title} className={className} data-testid="badge-live">
+      {label}
+    </span>
+  );
+}
 
 export default function SignalHistory() {
   const { data, isLoading } = useGetSignalHistory({
@@ -57,6 +84,7 @@ export default function SignalHistory() {
                           <td className="px-5 py-3 whitespace-nowrap font-bold">{item.symbol.replace('USDT', '/USDT')}</td>
                           <td className="px-5 py-3 whitespace-nowrap">
                             <SignalBadge signal={item.signal} />
+                            <ModeBadge item={item} />
                           </td>
                           <td className="px-5 py-3 whitespace-nowrap text-right">{item.rsi.toFixed(2)}</td>
                           <td className="px-5 py-3 whitespace-nowrap text-right">
@@ -74,7 +102,10 @@ export default function SignalHistory() {
                 {history.map((item, i) => (
                   <div key={i} className="flex items-center justify-between p-3.5 rounded-md border border-border/30 bg-muted/20">
                     <div className="flex items-center gap-3">
-                      <SignalBadge signal={item.signal} />
+                      <div className="flex items-center">
+                        <SignalBadge signal={item.signal} />
+                        <ModeBadge item={item} />
+                      </div>
                       <div className="flex flex-col">
                         <span className="font-mono font-bold text-sm">{item.symbol.replace('USDT', '/USDT')}</span>
                         <span className="text-[10px] text-muted-foreground font-mono">

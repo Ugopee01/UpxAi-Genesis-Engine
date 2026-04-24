@@ -5,7 +5,10 @@
  * UPXAI Genesis Engine API
  * OpenAPI spec version: 0.1.0
  */
+import type { SignalHistoryItemMode } from "./signalHistoryItemMode";
 import type { SignalHistoryItemSignal } from "./signalHistoryItemSignal";
+import type { SignalHistoryItemStatus } from "./signalHistoryItemStatus";
+import type { SignalHistoryItemTargetExchange } from "./signalHistoryItemTargetExchange";
 
 export interface SignalHistoryItem {
   signal: SignalHistoryItemSignal;
@@ -13,4 +16,11 @@ export interface SignalHistoryItem {
   rsi: number;
   price: number;
   timestamp: string;
+  mode?: SignalHistoryItemMode;
+  status?: SignalHistoryItemStatus;
+  targetExchange?: SignalHistoryItemTargetExchange;
+  orderId?: string;
+  executedQty?: number;
+  executedQuoteQty?: number;
+  error?: string;
 }

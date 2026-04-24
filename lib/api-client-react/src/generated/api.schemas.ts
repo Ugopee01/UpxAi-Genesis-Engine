@@ -26,9 +26,39 @@ export interface SignalResponse {
   timestamp: string;
 }
 
+/**
+ * Override the signal direction; defaults to the current signal
+ */
+export type TradeRequestSide =
+  (typeof TradeRequestSide)[keyof typeof TradeRequestSide];
+
+export const TradeRequestSide = {
+  BUY: "BUY",
+  SELL: "SELL",
+} as const;
+
+/**
+ * Which connected exchange to route the order to. Defaults to first available.
+ */
+export type TradeRequestTargetExchange =
+  (typeof TradeRequestTargetExchange)[keyof typeof TradeRequestTargetExchange];
+
+export const TradeRequestTargetExchange = {
+  binance: "binance",
+  bybit: "bybit",
+} as const;
+
 export interface TradeRequest {
   symbol?: string;
   liveMode?: boolean;
+  /** Must be true when liveMode is true to actually place a real order */
+  confirmLive?: boolean;
+  /** Override the signal direction; defaults to the current signal */
+  side?: TradeRequestSide;
+  /** Order notional in USDT (quote currency). Required when liveMode is true. */
+  quantityUsdt?: number;
+  /** Which connected exchange to route the order to. Defaults to first available. */
+  targetExchange?: TradeRequestTargetExchange;
 }
 
 export type TradeResponseExecutedSignal =
@@ -48,10 +78,43 @@ export type TradeResponseExecuted = {
   timestamp: string;
 };
 
+export type TradeResponseMode =
+  (typeof TradeResponseMode)[keyof typeof TradeResponseMode];
+
+export const TradeResponseMode = {
+  LIVE: "LIVE",
+  SIMULATED: "SIMULATED",
+} as const;
+
+export type TradeResponseTargetExchange =
+  (typeof TradeResponseTargetExchange)[keyof typeof TradeResponseTargetExchange];
+
+export const TradeResponseTargetExchange = {
+  binance: "binance",
+  bybit: "bybit",
+} as const;
+
+export type TradeResponseStatus =
+  (typeof TradeResponseStatus)[keyof typeof TradeResponseStatus];
+
+export const TradeResponseStatus = {
+  FILLED: "FILLED",
+  ACCEPTED: "ACCEPTED",
+  FAILED: "FAILED",
+  SIMULATED: "SIMULATED",
+} as const;
+
 export interface TradeResponse {
   executed: TradeResponseExecuted;
   simulated: boolean;
   liveMode: boolean;
+  mode: TradeResponseMode;
+  targetExchange?: TradeResponseTargetExchange;
+  orderId?: string;
+  executedQty?: number;
+  executedQuoteQty?: number;
+  status: TradeResponseStatus;
+  error?: string;
 }
 
 export interface MarketDataResponse {
@@ -74,12 +137,45 @@ export const SignalHistoryItemSignal = {
   HOLD: "HOLD",
 } as const;
 
+export type SignalHistoryItemMode =
+  (typeof SignalHistoryItemMode)[keyof typeof SignalHistoryItemMode];
+
+export const SignalHistoryItemMode = {
+  LIVE: "LIVE",
+  SIMULATED: "SIMULATED",
+} as const;
+
+export type SignalHistoryItemStatus =
+  (typeof SignalHistoryItemStatus)[keyof typeof SignalHistoryItemStatus];
+
+export const SignalHistoryItemStatus = {
+  FILLED: "FILLED",
+  ACCEPTED: "ACCEPTED",
+  FAILED: "FAILED",
+  SIMULATED: "SIMULATED",
+} as const;
+
+export type SignalHistoryItemTargetExchange =
+  (typeof SignalHistoryItemTargetExchange)[keyof typeof SignalHistoryItemTargetExchange];
+
+export const SignalHistoryItemTargetExchange = {
+  binance: "binance",
+  bybit: "bybit",
+} as const;
+
 export interface SignalHistoryItem {
   signal: SignalHistoryItemSignal;
   symbol: string;
   rsi: number;
   price: number;
   timestamp: string;
+  mode?: SignalHistoryItemMode;
+  status?: SignalHistoryItemStatus;
+  targetExchange?: SignalHistoryItemTargetExchange;
+  orderId?: string;
+  executedQty?: number;
+  executedQuoteQty?: number;
+  error?: string;
 }
 
 export interface SignalHistoryResponse {
