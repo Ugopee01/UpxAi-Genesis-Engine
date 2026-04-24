@@ -1,0 +1,124 @@
+Use Replit to deploy a lean but functional system.
+
+Objective
+
+A working system that:
+
+* Connects to Binance / Bybit
+* Generates signals
+* Executes trades (optional toggle)
+* Displays results
+
+EXACT BUILD  (DO THIS, NOTHING EXTRA)
+
+1. Create Replit Project
+
+* Language: Python (FastAPI)
+* Add: Node.js (for frontend later)
+
+⸻
+
+2. Backend (CORE ENGINE)
+
+Create:
+
+main.py
+
+from fastapi import FastAPI
+from app.routes import router
+
+app = FastAPI()
+app.include_router(router)
+
+@app.get("/")
+def root():
+    return {"status": "UPXAI running"}
+
+app/routes.py
+
+from fastapi import APIRouter
+from app.trading import get_signal, execute_trade
+
+router = APIRouter()
+
+@router.get("/signal")
+def signal():
+    return get_signal("BTCUSDT")
+
+@router.post("/trade")
+def trade():
+    return execute_trade("BTCUSDT")
+
+app/trading.py
+
+import pandas as pd
+import requests
+
+def fetch_data(symbol="BTCUSDT"):
+    url = f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval=1h&limit=100"
+    data = requests.get(url).json()
+    df = pd.DataFrame(data)
+    df[4] = df[4].astype(float)  # close price
+    return df
+
+def get_signal(symbol):
+    df = fetch_data(symbol)
+    closes = df[4]
+
+    rsi = (closes.diff().clip(lower=0).rolling(14).mean() /
+           closes.diff().abs().rolling(14).mean()) * 100
+
+    if rsi.iloc[-1] < 30:
+        return {"signal": "BUY"}
+    elif rsi.iloc[-1] > 70:
+        return {"signal": "SELL"}
+    else:
+        return {"signal": "HOLD"}
+
+def execute_trade(symbol):
+    signal = get_signal(symbol)
+    # simulate execution (no real trade yet)
+    return {"executed": signal}
+
+3. Install Dependencies
+
+pip install fastapi uvicorn pandas requests
+
+4. Run Server
+
+ uvicorn main:app --host 0.0.0.0 --port 8000
+
+5. Test Endpoints
+
+* /signal
+* /trade
+
+👉 make sure  this works →  LIVE
+
+6. Simple Frontend (FAST)
+
+Create /web/index.html
+
+<!DOCTYPE html>
+<html>
+<head><title>UPXAI</title></head>
+<body>
+<h1>UPXAI Dashboard</h1>
+<button onclick="getSignal()">Get Signal</button>
+<p id="result"></p>
+
+<script>
+async function getSignal() {
+  const res = await fetch('/signal');
+  const data = await res.json();
+  document.getElementById('result').innerText = data.signal;
+}
+</script>
+</body>
+</html>
+
+✅ EXPECTED OUTPUT RESULT:
+
+* A Working AI signal engine
+* API endpoints
+* Basic UI

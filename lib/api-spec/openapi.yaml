@@ -1,15 +1,16 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: UPXAI Genesis Engine API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: trading
+    description: Trading signal and execution operations
 paths:
   /healthz:
     get:
@@ -24,6 +25,95 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /signal:
+    get:
+      operationId: getSignal
+      tags: [trading]
+      summary: Get trading signal
+      description: Returns BUY/SELL/HOLD signal for a symbol based on RSI analysis
+      parameters:
+        - name: symbol
+          in: query
+          required: false
+          schema:
+            type: string
+            default: BTCUSDT
+      responses:
+        "200":
+          description: Signal result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SignalResponse"
+        "500":
+          description: Error fetching signal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /trade:
+    post:
+      operationId: executeTrade
+      tags: [trading]
+      summary: Execute a simulated trade
+      description: Executes a simulated trade based on the current signal
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TradeRequest"
+      responses:
+        "200":
+          description: Trade execution result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TradeResponse"
+        "500":
+          description: Error executing trade
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /market-data:
+    get:
+      operationId: getMarketData
+      tags: [trading]
+      summary: Get live market data
+      description: Returns current price and 24h stats for a symbol
+      parameters:
+        - name: symbol
+          in: query
+          required: false
+          schema:
+            type: string
+            default: BTCUSDT
+      responses:
+        "200":
+          description: Market data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketDataResponse"
+        "500":
+          description: Error fetching market data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /signals/history:
+    get:
+      operationId: getSignalHistory
+      tags: [trading]
+      summary: Get signal history
+      description: Returns the last N signals generated
+      responses:
+        "200":
+          description: Signal history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SignalHistoryResponse"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +123,127 @@ components:
           type: string
       required:
         - status
-
+    SignalResponse:
+      type: object
+      properties:
+        signal:
+          type: string
+          enum: [BUY, SELL, HOLD]
+        symbol:
+          type: string
+        rsi:
+          type: number
+        price:
+          type: number
+        timestamp:
+          type: string
+      required:
+        - signal
+        - symbol
+        - rsi
+        - price
+        - timestamp
+    TradeRequest:
+      type: object
+      properties:
+        symbol:
+          type: string
+          default: BTCUSDT
+        liveMode:
+          type: boolean
+          default: false
+    TradeResponse:
+      type: object
+      properties:
+        executed:
+          type: object
+          properties:
+            signal:
+              type: string
+              enum: [BUY, SELL, HOLD]
+            symbol:
+              type: string
+            rsi:
+              type: number
+            price:
+              type: number
+            timestamp:
+              type: string
+          required:
+            - signal
+            - symbol
+            - rsi
+            - price
+            - timestamp
+        simulated:
+          type: boolean
+        liveMode:
+          type: boolean
+      required:
+        - executed
+        - simulated
+        - liveMode
+    MarketDataResponse:
+      type: object
+      properties:
+        symbol:
+          type: string
+        price:
+          type: number
+        priceChange24h:
+          type: number
+        priceChangePercent24h:
+          type: number
+        high24h:
+          type: number
+        low24h:
+          type: number
+        volume24h:
+          type: number
+        timestamp:
+          type: string
+      required:
+        - symbol
+        - price
+        - priceChange24h
+        - priceChangePercent24h
+        - high24h
+        - low24h
+        - volume24h
+        - timestamp
+    SignalHistoryItem:
+      type: object
+      properties:
+        signal:
+          type: string
+          enum: [BUY, SELL, HOLD]
+        symbol:
+          type: string
+        rsi:
+          type: number
+        price:
+          type: number
+        timestamp:
+          type: string
+      required:
+        - signal
+        - symbol
+        - rsi
+        - price
+        - timestamp
+    SignalHistoryResponse:
+      type: object
+      properties:
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/SignalHistoryItem"
+      required:
+        - history
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
