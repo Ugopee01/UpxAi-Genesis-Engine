@@ -263,6 +263,14 @@ async function placeBybitOrder(
   }
 }
 
+const LIVE_ORDER_EXCHANGE_NAMES: Record<ExchangeId, string> = {
+  binance: "Binance",
+  bybit: "Bybit",
+  coinbase: "Coinbase",
+  kraken: "Kraken",
+  okx: "OKX",
+};
+
 async function placeLiveOrder(
   exchange: ExchangeId,
   rec: ExchangeRecord,
@@ -271,7 +279,13 @@ async function placeLiveOrder(
   quoteOrderQty: number,
 ): Promise<LiveOrderResult> {
   if (exchange === "binance") return placeBinanceOrder(rec, symbol, side, quoteOrderQty);
-  return placeBybitOrder(rec, symbol, side, quoteOrderQty);
+  if (exchange === "bybit") return placeBybitOrder(rec, symbol, side, quoteOrderQty);
+  // Coinbase/Kraken/OKX: connection management is supported, but live order
+  // routing isn't wired up yet. Fail loudly so traders aren't surprised.
+  return {
+    status: "FAILED",
+    error: `Live trading on ${LIVE_ORDER_EXCHANGE_NAMES[exchange]} isn't enabled yet — use Binance or Bybit, or run in Simulated mode.`,
+  };
 }
 
 router.post("/trade", async (req, res) => {

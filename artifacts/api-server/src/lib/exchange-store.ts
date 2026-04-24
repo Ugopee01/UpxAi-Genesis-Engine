@@ -43,20 +43,33 @@ const apiServerRoot = findApiServerRoot(__dirname);
 const dataDir = path.join(apiServerRoot, "data");
 const storeFile = path.join(dataDir, "exchanges.json");
 
-export type ExchangeId = "binance" | "bybit";
+export type ExchangeId = "binance" | "bybit" | "coinbase" | "kraken" | "okx";
+
+export const ALL_EXCHANGE_IDS: ExchangeId[] = [
+  "binance",
+  "bybit",
+  "coinbase",
+  "kraken",
+  "okx",
+];
 
 export interface ExchangeRecord {
   exchange: ExchangeId;
   apiKey: string;
   apiSecret: string;
+  /** Optional additional secret. Currently used by OKX. */
+  passphrase?: string;
   version: string;
   lastTestedAt?: string;
   lastTestStatus: "ok" | "error" | "untested";
   lastTestMessage?: string;
 }
 
-interface PersistedRecord extends Omit<ExchangeRecord, "apiSecret"> {
+interface PersistedRecord
+  extends Omit<ExchangeRecord, "apiSecret" | "passphrase"> {
   apiSecretCipher: string;
+  /** Encrypted passphrase. Optional — only present for exchanges that need one. */
+  passphraseCipher?: string;
 }
 
 type UserStore = Partial<Record<ExchangeId, PersistedRecord>>;
@@ -106,7 +119,7 @@ function isLegacyFlatStore(parsed: unknown): parsed is UserStore {
   // Legacy flat shape: top-level keys are exchange ids and the values look
   // like persisted records (have an `apiSecretCipher` string).
   for (const key of Object.keys(parsed as Record<string, unknown>)) {
-    if (key !== "binance" && key !== "bybit") return false;
+    if (!(ALL_EXCHANGE_IDS as string[]).includes(key)) return false;
     const v = (parsed as Record<string, unknown>)[key];
     if (!v || typeof v !== "object") return false;
     if (typeof (v as Record<string, unknown>).apiSecretCipher !== "string") {
@@ -141,12 +154,27 @@ function save(store: Store) {
 }
 
 function toMemory(p: PersistedRecord): ExchangeRecord {
-  return { ...p, apiSecret: decrypt(p.apiSecretCipher) };
+  const { apiSecretCipher, passphraseCipher, ...rest } = p;
+  const out: ExchangeRecord = {
+    ...rest,
+    apiSecret: decrypt(apiSecretCipher),
+  };
+  if (passphraseCipher) {
+    out.passphrase = decrypt(passphraseCipher);
+  }
+  return out;
 }
 
 function toPersisted(r: ExchangeRecord): PersistedRecord {
-  const { apiSecret, ...rest } = r;
-  return { ...rest, apiSecretCipher: encrypt(apiSecret) };
+  const { apiSecret, passphrase, ...rest } = r;
+  const out: PersistedRecord = {
+    ...rest,
+    apiSecretCipher: encrypt(apiSecret),
+  };
+  if (passphrase) {
+    out.passphraseCipher = encrypt(passphrase);
+  }
+  return out;
 }
 
 export function maskKey(key: string): string {
@@ -199,15 +227,20 @@ export function deleteRecord(userId: string, exchange: ExchangeId): void {
 
 export function listSummaries(
   userId: string,
-): Array<Omit<ExchangeRecord, "apiSecret">> {
+): Array<Omit<ExchangeRecord, "apiSecret" | "passphrase">> {
   const userStore = load()[userId];
   if (!userStore) return [];
-  const out: Array<Omit<ExchangeRecord, "apiSecret">> = [];
+  const out: Array<Omit<ExchangeRecord, "apiSecret" | "passphrase">> = [];
   for (const key of Object.keys(userStore) as ExchangeId[]) {
     const p = userStore[key];
     if (!p) continue;
-    const { apiSecretCipher: _ignored, ...rest } = p;
+    const {
+      apiSecretCipher: _ignored,
+      passphraseCipher: _ignoredPass,
+      ...rest
+    } = p;
     void _ignored;
+    void _ignoredPass;
     out.push(rest);
   }
   return out;

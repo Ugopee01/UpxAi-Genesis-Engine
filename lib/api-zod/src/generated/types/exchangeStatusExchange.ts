@@ -12,4 +12,7 @@ export type ExchangeStatusExchange =
 export const ExchangeStatusExchange = {
   binance: "binance",
   bybit: "bybit",
+  coinbase: "coinbase",
+  kraken: "kraken",
+  okx: "okx",
 } as const;

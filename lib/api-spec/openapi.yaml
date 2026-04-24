@@ -196,7 +196,7 @@ paths:
           required: true
           schema:
             type: string
-            enum: [binance, bybit]
+            enum: [binance, bybit, coinbase, kraken, okx]
       requestBody:
         required: true
         content:
@@ -227,7 +227,7 @@ paths:
           required: true
           schema:
             type: string
-            enum: [binance, bybit]
+            enum: [binance, bybit, coinbase, kraken, okx]
       responses:
         "200":
           description: Connection removed
@@ -246,7 +246,7 @@ paths:
           required: true
           schema:
             type: string
-            enum: [binance, bybit]
+            enum: [binance, bybit, coinbase, kraken, okx]
       responses:
         "200":
           description: Test result
@@ -305,7 +305,7 @@ components:
           description: Order notional in USDT (quote currency). Required when liveMode is true.
         targetExchange:
           type: string
-          enum: [binance, bybit]
+          enum: [binance, bybit, coinbase, kraken, okx]
           description: Which connected exchange to route the order to. Defaults to first available.
     TradeResponse:
       type: object
@@ -339,7 +339,7 @@ components:
           enum: [LIVE, SIMULATED]
         targetExchange:
           type: string
-          enum: [binance, bybit]
+          enum: [binance, bybit, coinbase, kraken, okx]
         orderId:
           type: string
         executedQty:
@@ -407,7 +407,7 @@ components:
           enum: [FILLED, ACCEPTED, FAILED, SIMULATED]
         targetExchange:
           type: string
-          enum: [binance, bybit]
+          enum: [binance, bybit, coinbase, kraken, okx]
         orderId:
           type: string
         executedQty:
@@ -443,7 +443,7 @@ components:
       properties:
         exchange:
           type: string
-          enum: [binance, bybit]
+          enum: [binance, bybit, coinbase, kraken, okx]
         name:
           type: string
         configured:
@@ -457,11 +457,15 @@ components:
           enum: [ok, error, untested]
         lastTestMessage:
           type: string
+        requiresPassphrase:
+          type: boolean
+          description: True when this exchange requires an additional passphrase alongside the API key/secret.
       required:
         - exchange
         - name
         - configured
         - lastTestStatus
+        - requiresPassphrase
     ExchangeListResponse:
       type: object
       properties:
@@ -481,6 +485,9 @@ components:
           type: string
         apiSecret:
           type: string
+        passphrase:
+          type: string
+          description: Optional additional secret. Required for exchanges like OKX.
       required:
         - apiKey
         - apiSecret
@@ -489,7 +496,7 @@ components:
       properties:
         exchange:
           type: string
-          enum: [binance, bybit]
+          enum: [binance, bybit, coinbase, kraken, okx]
         success:
           type: boolean
         message:

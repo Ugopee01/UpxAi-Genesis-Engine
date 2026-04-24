@@ -12,4 +12,7 @@ export type TradeResponseTargetExchange =
 export const TradeResponseTargetExchange = {
   binance: "binance",
   bybit: "bybit",
+  coinbase: "coinbase",
+  kraken: "kraken",
+  okx: "okx",
 } as const;

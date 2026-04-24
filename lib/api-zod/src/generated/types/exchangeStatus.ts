@@ -16,4 +16,6 @@ export interface ExchangeStatus {
   lastTestedAt?: string;
   lastTestStatus: ExchangeStatusLastTestStatus;
   lastTestMessage?: string;
+  /** True when this exchange requires an additional passphrase alongside the API key/secret. */
+  requiresPassphrase: boolean;
 }

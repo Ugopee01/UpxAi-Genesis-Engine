@@ -9,4 +9,6 @@
 export interface ExchangeCredentialsRequest {
   apiKey: string;
   apiSecret: string;
+  /** Optional additional secret. Required for exchanges like OKX. */
+  passphrase?: string;
 }

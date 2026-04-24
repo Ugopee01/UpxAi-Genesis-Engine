@@ -92,7 +92,7 @@ export const ExecuteTradeBody = zod.object({
       "Order notional in USDT (quote currency). Required when liveMode is true.",
     ),
   targetExchange: zod
-    .enum(["binance", "bybit"])
+    .enum(["binance", "bybit", "coinbase", "kraken", "okx"])
     .optional()
     .describe(
       "Which connected exchange to route the order to. Defaults to first available.",
@@ -110,7 +110,9 @@ export const ExecuteTradeResponse = zod.object({
   simulated: zod.boolean(),
   liveMode: zod.boolean(),
   mode: zod.enum(["LIVE", "SIMULATED"]),
-  targetExchange: zod.enum(["binance", "bybit"]).optional(),
+  targetExchange: zod
+    .enum(["binance", "bybit", "coinbase", "kraken", "okx"])
+    .optional(),
   orderId: zod.string().optional(),
   executedQty: zod.number().optional(),
   executedQuoteQty: zod.number().optional(),
@@ -155,7 +157,9 @@ export const GetSignalHistoryResponse = zod.object({
       status: zod
         .enum(["FILLED", "ACCEPTED", "FAILED", "SIMULATED"])
         .optional(),
-      targetExchange: zod.enum(["binance", "bybit"]).optional(),
+      targetExchange: zod
+        .enum(["binance", "bybit", "coinbase", "kraken", "okx"])
+        .optional(),
       orderId: zod.string().optional(),
       executedQty: zod.number().optional(),
       executedQuoteQty: zod.number().optional(),
@@ -170,13 +174,18 @@ export const GetSignalHistoryResponse = zod.object({
 export const ListExchangesResponse = zod.object({
   exchanges: zod.array(
     zod.object({
-      exchange: zod.enum(["binance", "bybit"]),
+      exchange: zod.enum(["binance", "bybit", "coinbase", "kraken", "okx"]),
       name: zod.string(),
       configured: zod.boolean(),
       apiKeyMasked: zod.string().optional(),
       lastTestedAt: zod.string().optional(),
       lastTestStatus: zod.enum(["ok", "error", "untested"]),
       lastTestMessage: zod.string().optional(),
+      requiresPassphrase: zod
+        .boolean()
+        .describe(
+          "True when this exchange requires an additional passphrase alongside the API key\/secret.",
+        ),
     }),
   ),
   connectedCount: zod.number(),
@@ -186,50 +195,64 @@ export const ListExchangesResponse = zod.object({
  * @summary Save API credentials for an exchange
  */
 export const ConnectExchangeParams = zod.object({
-  exchange: zod.enum(["binance", "bybit"]),
+  exchange: zod.enum(["binance", "bybit", "coinbase", "kraken", "okx"]),
 });
 
 export const ConnectExchangeBody = zod.object({
   apiKey: zod.string(),
   apiSecret: zod.string(),
+  passphrase: zod
+    .string()
+    .optional()
+    .describe("Optional additional secret. Required for exchanges like OKX."),
 });
 
 export const ConnectExchangeResponse = zod.object({
-  exchange: zod.enum(["binance", "bybit"]),
+  exchange: zod.enum(["binance", "bybit", "coinbase", "kraken", "okx"]),
   name: zod.string(),
   configured: zod.boolean(),
   apiKeyMasked: zod.string().optional(),
   lastTestedAt: zod.string().optional(),
   lastTestStatus: zod.enum(["ok", "error", "untested"]),
   lastTestMessage: zod.string().optional(),
+  requiresPassphrase: zod
+    .boolean()
+    .describe(
+      "True when this exchange requires an additional passphrase alongside the API key\/secret.",
+    ),
 });
 
 /**
  * @summary Remove saved credentials for an exchange
  */
 export const DisconnectExchangeParams = zod.object({
-  exchange: zod.enum(["binance", "bybit"]),
+  exchange: zod.enum(["binance", "bybit", "coinbase", "kraken", "okx"]),
 });
 
 export const DisconnectExchangeResponse = zod.object({
-  exchange: zod.enum(["binance", "bybit"]),
+  exchange: zod.enum(["binance", "bybit", "coinbase", "kraken", "okx"]),
   name: zod.string(),
   configured: zod.boolean(),
   apiKeyMasked: zod.string().optional(),
   lastTestedAt: zod.string().optional(),
   lastTestStatus: zod.enum(["ok", "error", "untested"]),
   lastTestMessage: zod.string().optional(),
+  requiresPassphrase: zod
+    .boolean()
+    .describe(
+      "True when this exchange requires an additional passphrase alongside the API key\/secret.",
+    ),
 });
 
 /**
  * @summary Test the connection to an exchange using stored credentials
  */
 export const TestExchangeParams = zod.object({
-  exchange: zod.enum(["binance", "bybit"]),
+  exchange: zod.enum(["binance", "bybit", "coinbase", "kraken", "okx"]),
 });
 
 export const TestExchangeResponse = zod.object({
-  exchange: zod.enum(["binance", "bybit"]),
+  exchange: zod.enum(["binance", "bybit", "coinbase", "kraken", "okx"]),
   success: zod.boolean(),
   message: zod.string(),
   testedAt: zod.string(),

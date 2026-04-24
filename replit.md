@@ -57,7 +57,7 @@ Binance API is unreachable from Replit; all routes use realistic simulated fallb
 - `/` — Dashboard (live market data, RSI gauge, signal badge, recent signals)
 - `/signals` — Signal History (table of past signals)
 - `/trade` — Trade Console (execute simulated trades, P&L tracker)
-- `/exchanges` — Exchange Connections (Binance / Bybit API key management)
+- `/exchanges` — Exchange Connections (Binance, Bybit, Coinbase, Kraken, OKX). Coinbase uses Advanced Trade JWT (ES256) signed with the user's EC private key PEM. Kraken uses HMAC-SHA512 over the URI path + SHA-256(nonce+body) with the base64-decoded secret. OKX uses HMAC-SHA256 of (timestamp+method+path) and additionally requires a passphrase header (`OK-ACCESS-PASSPHRASE`). The connect dialog shows a Passphrase field only for OKX. Live order routing is currently implemented for Binance and Bybit only — Coinbase / Kraken / OKX are connection/test only and live orders against them return a clean "not enabled yet" error.
 
 ## Authentication
 

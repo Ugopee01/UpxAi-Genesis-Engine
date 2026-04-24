@@ -12,4 +12,7 @@ export type SignalHistoryItemTargetExchange =
 export const SignalHistoryItemTargetExchange = {
   binance: "binance",
   bybit: "bybit",
+  coinbase: "coinbase",
+  kraken: "kraken",
+  okx: "okx",
 } as const;

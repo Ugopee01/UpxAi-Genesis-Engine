@@ -792,12 +792,14 @@ export function useListExchanges<
 /**
  * @summary Save API credentials for an exchange
  */
-export const getConnectExchangeUrl = (exchange: "binance" | "bybit") => {
+export const getConnectExchangeUrl = (
+  exchange: "binance" | "bybit" | "coinbase" | "kraken" | "okx",
+) => {
   return `/api/exchanges/${exchange}/connect`;
 };
 
 export const connectExchange = async (
-  exchange: "binance" | "bybit",
+  exchange: "binance" | "bybit" | "coinbase" | "kraken" | "okx",
   exchangeCredentialsRequest: ExchangeCredentialsRequest,
   options?: RequestInit,
 ): Promise<ExchangeStatus> => {
@@ -817,7 +819,7 @@ export const getConnectExchangeMutationOptions = <
     Awaited<ReturnType<typeof connectExchange>>,
     TError,
     {
-      exchange: "binance" | "bybit";
+      exchange: "binance" | "bybit" | "coinbase" | "kraken" | "okx";
       data: BodyType<ExchangeCredentialsRequest>;
     },
     TContext
@@ -826,7 +828,10 @@ export const getConnectExchangeMutationOptions = <
 }): UseMutationOptions<
   Awaited<ReturnType<typeof connectExchange>>,
   TError,
-  { exchange: "binance" | "bybit"; data: BodyType<ExchangeCredentialsRequest> },
+  {
+    exchange: "binance" | "bybit" | "coinbase" | "kraken" | "okx";
+    data: BodyType<ExchangeCredentialsRequest>;
+  },
   TContext
 > => {
   const mutationKey = ["connectExchange"];
@@ -841,7 +846,7 @@ export const getConnectExchangeMutationOptions = <
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof connectExchange>>,
     {
-      exchange: "binance" | "bybit";
+      exchange: "binance" | "bybit" | "coinbase" | "kraken" | "okx";
       data: BodyType<ExchangeCredentialsRequest>;
     }
   > = (props) => {
@@ -870,7 +875,7 @@ export const useConnectExchange = <
     Awaited<ReturnType<typeof connectExchange>>,
     TError,
     {
-      exchange: "binance" | "bybit";
+      exchange: "binance" | "bybit" | "coinbase" | "kraken" | "okx";
       data: BodyType<ExchangeCredentialsRequest>;
     },
     TContext
@@ -879,7 +884,10 @@ export const useConnectExchange = <
 }): UseMutationResult<
   Awaited<ReturnType<typeof connectExchange>>,
   TError,
-  { exchange: "binance" | "bybit"; data: BodyType<ExchangeCredentialsRequest> },
+  {
+    exchange: "binance" | "bybit" | "coinbase" | "kraken" | "okx";
+    data: BodyType<ExchangeCredentialsRequest>;
+  },
   TContext
 > => {
   return useMutation(getConnectExchangeMutationOptions(options));
@@ -888,12 +896,14 @@ export const useConnectExchange = <
 /**
  * @summary Remove saved credentials for an exchange
  */
-export const getDisconnectExchangeUrl = (exchange: "binance" | "bybit") => {
+export const getDisconnectExchangeUrl = (
+  exchange: "binance" | "bybit" | "coinbase" | "kraken" | "okx",
+) => {
   return `/api/exchanges/${exchange}/disconnect`;
 };
 
 export const disconnectExchange = async (
-  exchange: "binance" | "bybit",
+  exchange: "binance" | "bybit" | "coinbase" | "kraken" | "okx",
   options?: RequestInit,
 ): Promise<ExchangeStatus> => {
   return customFetch<ExchangeStatus>(getDisconnectExchangeUrl(exchange), {
@@ -909,14 +919,14 @@ export const getDisconnectExchangeMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof disconnectExchange>>,
     TError,
-    { exchange: "binance" | "bybit" },
+    { exchange: "binance" | "bybit" | "coinbase" | "kraken" | "okx" },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof disconnectExchange>>,
   TError,
-  { exchange: "binance" | "bybit" },
+  { exchange: "binance" | "bybit" | "coinbase" | "kraken" | "okx" },
   TContext
 > => {
   const mutationKey = ["disconnectExchange"];
@@ -930,7 +940,7 @@ export const getDisconnectExchangeMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof disconnectExchange>>,
-    { exchange: "binance" | "bybit" }
+    { exchange: "binance" | "bybit" | "coinbase" | "kraken" | "okx" }
   > = (props) => {
     const { exchange } = props ?? {};
 
@@ -956,14 +966,14 @@ export const useDisconnectExchange = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof disconnectExchange>>,
     TError,
-    { exchange: "binance" | "bybit" },
+    { exchange: "binance" | "bybit" | "coinbase" | "kraken" | "okx" },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof disconnectExchange>>,
   TError,
-  { exchange: "binance" | "bybit" },
+  { exchange: "binance" | "bybit" | "coinbase" | "kraken" | "okx" },
   TContext
 > => {
   return useMutation(getDisconnectExchangeMutationOptions(options));
@@ -972,12 +982,14 @@ export const useDisconnectExchange = <
 /**
  * @summary Test the connection to an exchange using stored credentials
  */
-export const getTestExchangeUrl = (exchange: "binance" | "bybit") => {
+export const getTestExchangeUrl = (
+  exchange: "binance" | "bybit" | "coinbase" | "kraken" | "okx",
+) => {
   return `/api/exchanges/${exchange}/test`;
 };
 
 export const testExchange = async (
-  exchange: "binance" | "bybit",
+  exchange: "binance" | "bybit" | "coinbase" | "kraken" | "okx",
   options?: RequestInit,
 ): Promise<ExchangeTestResponse> => {
   return customFetch<ExchangeTestResponse>(getTestExchangeUrl(exchange), {
@@ -993,14 +1005,14 @@ export const getTestExchangeMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof testExchange>>,
     TError,
-    { exchange: "binance" | "bybit" },
+    { exchange: "binance" | "bybit" | "coinbase" | "kraken" | "okx" },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof testExchange>>,
   TError,
-  { exchange: "binance" | "bybit" },
+  { exchange: "binance" | "bybit" | "coinbase" | "kraken" | "okx" },
   TContext
 > => {
   const mutationKey = ["testExchange"];
@@ -1014,7 +1026,7 @@ export const getTestExchangeMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof testExchange>>,
-    { exchange: "binance" | "bybit" }
+    { exchange: "binance" | "bybit" | "coinbase" | "kraken" | "okx" }
   > = (props) => {
     const { exchange } = props ?? {};
 
@@ -1040,14 +1052,14 @@ export const useTestExchange = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof testExchange>>,
     TError,
-    { exchange: "binance" | "bybit" },
+    { exchange: "binance" | "bybit" | "coinbase" | "kraken" | "okx" },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof testExchange>>,
   TError,
-  { exchange: "binance" | "bybit" },
+  { exchange: "binance" | "bybit" | "coinbase" | "kraken" | "okx" },
   TContext
 > => {
   return useMutation(getTestExchangeMutationOptions(options));

@@ -46,6 +46,9 @@ export type TradeRequestTargetExchange =
 export const TradeRequestTargetExchange = {
   binance: "binance",
   bybit: "bybit",
+  coinbase: "coinbase",
+  kraken: "kraken",
+  okx: "okx",
 } as const;
 
 export interface TradeRequest {
@@ -92,6 +95,9 @@ export type TradeResponseTargetExchange =
 export const TradeResponseTargetExchange = {
   binance: "binance",
   bybit: "bybit",
+  coinbase: "coinbase",
+  kraken: "kraken",
+  okx: "okx",
 } as const;
 
 export type TradeResponseStatus =
@@ -161,6 +167,9 @@ export type SignalHistoryItemTargetExchange =
 export const SignalHistoryItemTargetExchange = {
   binance: "binance",
   bybit: "bybit",
+  coinbase: "coinbase",
+  kraken: "kraken",
+  okx: "okx",
 } as const;
 
 export interface SignalHistoryItem {
@@ -192,6 +201,9 @@ export type ExchangeStatusExchange =
 export const ExchangeStatusExchange = {
   binance: "binance",
   bybit: "bybit",
+  coinbase: "coinbase",
+  kraken: "kraken",
+  okx: "okx",
 } as const;
 
 export type ExchangeStatusLastTestStatus =
@@ -211,6 +223,8 @@ export interface ExchangeStatus {
   lastTestedAt?: string;
   lastTestStatus: ExchangeStatusLastTestStatus;
   lastTestMessage?: string;
+  /** True when this exchange requires an additional passphrase alongside the API key/secret. */
+  requiresPassphrase: boolean;
 }
 
 export interface ExchangeListResponse {
@@ -221,6 +235,8 @@ export interface ExchangeListResponse {
 export interface ExchangeCredentialsRequest {
   apiKey: string;
   apiSecret: string;
+  /** Optional additional secret. Required for exchanges like OKX. */
+  passphrase?: string;
 }
 
 export type ExchangeTestResponseExchange =
@@ -229,6 +245,9 @@ export type ExchangeTestResponseExchange =
 export const ExchangeTestResponseExchange = {
   binance: "binance",
   bybit: "bybit",
+  coinbase: "coinbase",
+  kraken: "kraken",
+  okx: "okx",
 } as const;
 
 export interface ExchangeTestResponse {
