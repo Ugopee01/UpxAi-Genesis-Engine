@@ -60,6 +60,13 @@ interface PersistedRecord extends Omit<ExchangeRecord, "apiSecret"> {
 
 type Store = Partial<Record<ExchangeId, PersistedRecord>>;
 
+// In production, fail fast if the operator hasn't set an explicit encryption
+// key — never silently fall back to a predictable default.
+if (process.env.NODE_ENV === "production" && !process.env.UPXAI_STORE_KEY) {
+  throw new Error(
+    "UPXAI_STORE_KEY is required in production to encrypt exchange credentials at rest.",
+  );
+}
 const KEY_MATERIAL =
   process.env.UPXAI_STORE_KEY ??
   "upxai-genesis-engine-default-key-rotate-in-prod";

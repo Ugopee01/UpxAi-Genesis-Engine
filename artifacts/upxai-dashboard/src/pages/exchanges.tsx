@@ -18,14 +18,52 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useToast } from "@/hooks/use-toast";
 import { Plug, ShieldCheck, ShieldAlert, ShieldQuestion, Trash2, Zap, Eye, EyeOff, KeyRound } from "lucide-react";
 
-const EXCHANGE_META: Record<string, { gradient: string; tagline: string }> = {
+function BinanceLogo({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 126.61 126.61" className={className} aria-label="Binance logo">
+      <g fill="#F3BA2F">
+        <path d="M38.73,53.2,63.31,28.62,87.9,53.21l14.3-14.3L63.31,0,24.43,38.9Z" />
+        <path d="M0,63.3,14.3,49l14.3,14.3L14.3,77.61Z" />
+        <path d="M38.73,73.41,63.31,98,87.9,73.4l14.31,14.29h0L63.31,126.61,24.43,87.72l-.02-.02Z" />
+        <path d="M98,63.31l14.3-14.3,14.3,14.3-14.3,14.3Z" />
+        <path d="M77.83,63.3h0L63.31,48.78,52.58,59.51h0l-1.23,1.23-2.54,2.54L48.79,63.3l0,0,14.52,14.52L77.83,63.31Z" />
+      </g>
+    </svg>
+  );
+}
+
+function BybitLogo({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 64 64" className={className} aria-label="Bybit logo">
+      <rect x="2" y="2" width="60" height="60" rx="12" fill="#F7A600" />
+      <text
+        x="32"
+        y="44"
+        textAnchor="middle"
+        fontFamily="Inter, system-ui, sans-serif"
+        fontWeight="800"
+        fontSize="38"
+        fill="#000"
+      >
+        B
+      </text>
+    </svg>
+  );
+}
+
+const EXCHANGE_META: Record<
+  string,
+  { gradient: string; tagline: string; Logo: ({ className }: { className?: string }) => JSX.Element }
+> = {
   binance: {
     gradient: "from-yellow-500/20 via-amber-500/5 to-transparent",
     tagline: "World's largest crypto exchange by volume.",
+    Logo: BinanceLogo,
   },
   bybit: {
     gradient: "from-orange-500/20 via-orange-500/5 to-transparent",
     tagline: "Derivatives & spot trading powerhouse.",
+    Logo: BybitLogo,
   },
 };
 
@@ -178,14 +216,26 @@ export default function Exchanges() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
           {exchanges.map((ex) => {
-            const meta = EXCHANGE_META[ex.exchange] ?? { gradient: "from-primary/10 to-transparent", tagline: "" };
+            const meta = EXCHANGE_META[ex.exchange] ?? {
+              gradient: "from-primary/10 to-transparent",
+              tagline: "",
+              Logo: null as unknown as ({ className }: { className?: string }) => JSX.Element,
+            };
+            const Logo = meta.Logo;
             return (
               <Card key={ex.exchange} className="bg-card border-border/50 shadow-lg relative overflow-hidden flex flex-col">
                 <div className={`absolute inset-0 bg-gradient-to-br ${meta.gradient} opacity-60 pointer-events-none`} />
                 <CardHeader className="relative pb-3 flex flex-row items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <CardTitle className="text-xl md:text-2xl tracking-tight">{ex.name}</CardTitle>
-                    <CardDescription className="text-xs mt-1">{meta.tagline}</CardDescription>
+                  <div className="min-w-0 flex items-center gap-3">
+                    {Logo && (
+                      <div className="h-11 w-11 shrink-0 rounded-md bg-background/40 border border-border/40 flex items-center justify-center p-2">
+                        <Logo className="h-full w-full" />
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <CardTitle className="text-xl md:text-2xl tracking-tight">{ex.name}</CardTitle>
+                      <CardDescription className="text-xs mt-1">{meta.tagline}</CardDescription>
+                    </div>
                   </div>
                   <StatusPill ex={ex} />
                 </CardHeader>
