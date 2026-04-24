@@ -4,19 +4,42 @@ import crypto from "crypto";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-// Resolve dataDir to artifacts/api-server/data regardless of whether running
-// from src/ (tsx) or dist/ (built bundle).
-const dataDir = (() => {
-  const candidates = [
-    path.resolve(__dirname, "..", "data"), // dist/ → ../data
-    path.resolve(__dirname, "..", "..", "data"), // src/lib/ → ../../data
-  ];
-  // Prefer the candidate that lives under an "api-server" directory.
-  const apiServerCandidate = candidates.find((c) =>
-    c.split(path.sep).includes("api-server"),
-  );
-  return apiServerCandidate ?? candidates[0];
-})();
+
+// Resolve dataDir deterministically to <api-server-root>/data, where
+// api-server-root is the nearest ancestor directory that contains a
+// package.json with name "@workspace/api-server". Works for src (tsx),
+// dist (bundled), or any future build layout — and never writes inside
+// dist/, which gets wiped on rebuild.
+function findApiServerRoot(start: string): string {
+  let dir = start;
+  for (let i = 0; i < 10; i++) {
+    const pkgPath = path.join(dir, "package.json");
+    try {
+      if (fs.existsSync(pkgPath)) {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+        if (pkg?.name === "@workspace/api-server") return dir;
+      }
+    } catch {
+      // ignore parse errors and keep walking
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  // Fallback: walk up until we hit a directory literally named "api-server"
+  let cursor = start;
+  for (let i = 0; i < 10; i++) {
+    if (path.basename(cursor) === "api-server") return cursor;
+    const parent = path.dirname(cursor);
+    if (parent === cursor) break;
+    cursor = parent;
+  }
+  // Last resort
+  return path.resolve(start, "..");
+}
+
+const apiServerRoot = findApiServerRoot(__dirname);
+const dataDir = path.join(apiServerRoot, "data");
 const storeFile = path.join(dataDir, "exchanges.json");
 
 export type ExchangeId = "binance" | "bybit";

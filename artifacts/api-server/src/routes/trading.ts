@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import axios from "axios";
+import { listSummaries } from "../lib/exchange-store";
 
 const router: IRouter = Router();
 
@@ -118,7 +119,29 @@ router.post("/trade", async (req, res) => {
   const executed = { signal: result.signal, symbol: result.symbol, rsi: result.rsi, price: result.price, timestamp: result.timestamp };
   signalHistory.unshift(executed);
   if (signalHistory.length > 100) signalHistory.pop();
-  res.json({ executed, simulated: !liveMode, liveMode });
+
+  // When live mode is armed, log which connected exchange would have
+  // received the order. Order routing remains simulated by design in
+  // this iteration — see follow-up "Actually route live trades to the
+  // connected exchange".
+  let targetExchange: string | undefined;
+  if (liveMode) {
+    const connected = listSummaries();
+    // Prefer an exchange that has passed its test, otherwise fall back to any connected one.
+    targetExchange =
+      connected.find((s) => s.lastTestStatus === "ok")?.exchange ?? connected[0]?.exchange;
+    if (targetExchange) {
+      console.log(
+        `[trade] LIVE armed — would route ${executed.signal} ${executed.symbol} @ ${executed.price} to ${targetExchange} (simulated)`,
+      );
+    } else {
+      console.log(
+        `[trade] LIVE armed but no exchange connected — falling back to simulation for ${executed.signal} ${executed.symbol}`,
+      );
+    }
+  }
+
+  res.json({ executed, simulated: !liveMode, liveMode, targetExchange });
 });
 
 router.get("/market-data", async (req, res) => {
