@@ -3,31 +3,26 @@ import axios from "axios";
 
 const router: IRouter = Router();
 
-const signalHistory: Array<{
-  signal: "BUY" | "SELL" | "HOLD";
-  symbol: string;
-  rsi: number;
-  price: number;
-  timestamp: string;
-}> = [];
-
 const SYMBOL_BASE_PRICES: Record<string, number> = {
   BTCUSDT: 94500,
-  ETHUSDT: 3200,
-  SOLUSDT: 165,
-  BNBUSDT: 610,
-  XRPUSDT: 2.2,
-  ADAUSDT: 0.85,
+  ETHUSDT: 3650,
+  SOLUSDT: 185,
+  BNBUSDT: 715,
+  XRPUSDT: 2.28,
+  ADAUSDT: 0.88,
 };
 
 function simulatePrice(symbol: string): number {
   const base = SYMBOL_BASE_PRICES[symbol] ?? 100;
-  const variance = base * 0.002;
+  const variance = base * 0.004;
   return parseFloat((base + (Math.random() - 0.5) * 2 * variance).toFixed(2));
 }
 
 function simulateRSI(): number {
-  return parseFloat((25 + Math.random() * 60).toFixed(2));
+  const roll = Math.random();
+  if (roll < 0.15) return parseFloat((18 + Math.random() * 12).toFixed(2));
+  if (roll < 0.20) return parseFloat((70 + Math.random() * 20).toFixed(2));
+  return parseFloat((35 + Math.random() * 35).toFixed(2));
 }
 
 async function fetchKlines(symbol: string): Promise<number[]> {
@@ -75,12 +70,44 @@ async function computeSignal(symbol: string) {
   return { signal, symbol, rsi, price, timestamp: new Date().toISOString(), simulated: isSimulated };
 }
 
+function seedHistory() {
+  const symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BTCUSDT", "BTCUSDT"];
+  const now = Date.now();
+  const entries: Array<{ signal: "BUY" | "SELL" | "HOLD"; symbol: string; rsi: number; price: number; timestamp: string }> = [];
+
+  for (let i = 24; i >= 0; i--) {
+    const symbol = symbols[i % symbols.length];
+    const rsi = simulateRSI();
+    const price = simulatePrice(symbol);
+    let signal: "BUY" | "SELL" | "HOLD";
+    if (rsi < 30) signal = "BUY";
+    else if (rsi > 70) signal = "SELL";
+    else signal = "HOLD";
+    entries.push({
+      signal,
+      symbol,
+      rsi,
+      price,
+      timestamp: new Date(now - i * 45 * 60 * 1000 - Math.random() * 20 * 60 * 1000).toISOString(),
+    });
+  }
+  return entries.reverse();
+}
+
+const signalHistory: Array<{
+  signal: "BUY" | "SELL" | "HOLD";
+  symbol: string;
+  rsi: number;
+  price: number;
+  timestamp: string;
+}> = seedHistory();
+
 router.get("/signal", async (req, res) => {
   const symbol = (req.query.symbol as string) || "BTCUSDT";
   const result = await computeSignal(symbol);
   const entry = { signal: result.signal, symbol: result.symbol, rsi: result.rsi, price: result.price, timestamp: result.timestamp };
   signalHistory.unshift(entry);
-  if (signalHistory.length > 50) signalHistory.pop();
+  if (signalHistory.length > 100) signalHistory.pop();
   res.json(entry);
 });
 
@@ -90,7 +117,7 @@ router.post("/trade", async (req, res) => {
   const result = await computeSignal(symbol);
   const executed = { signal: result.signal, symbol: result.symbol, rsi: result.rsi, price: result.price, timestamp: result.timestamp };
   signalHistory.unshift(executed);
-  if (signalHistory.length > 50) signalHistory.pop();
+  if (signalHistory.length > 100) signalHistory.pop();
   res.json({ executed, simulated: !liveMode, liveMode });
 });
 
@@ -115,17 +142,21 @@ router.get("/market-data", async (req, res) => {
     });
   } catch {
     const price = simulatePrice(symbol);
-    const changePercent = parseFloat(((Math.random() - 0.45) * 8).toFixed(2));
+    const changePercent = parseFloat(((Math.random() - 0.45) * 6).toFixed(2));
     const change = parseFloat((price * changePercent / 100).toFixed(2));
-    const variance = price * 0.04;
+    const high = parseFloat((price * (1 + 0.03 + Math.random() * 0.02)).toFixed(2));
+    const low = parseFloat((price * (1 - 0.03 - Math.random() * 0.02)).toFixed(2));
+    const vol = symbol === "BTCUSDT"
+      ? parseFloat((28000 + Math.random() * 20000).toFixed(2))
+      : parseFloat((Math.random() * 1000000 + 100000).toFixed(2));
     res.json({
       symbol,
       price,
       priceChange24h: change,
       priceChangePercent24h: changePercent,
-      high24h: parseFloat((price + variance).toFixed(2)),
-      low24h: parseFloat((price - variance).toFixed(2)),
-      volume24h: parseFloat((Math.random() * 50000 + 10000).toFixed(2)),
+      high24h: high,
+      low24h: low,
+      volume24h: vol,
       timestamp: new Date().toISOString(),
     });
   }
