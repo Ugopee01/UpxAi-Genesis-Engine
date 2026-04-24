@@ -57,5 +57,20 @@ Binance API is unreachable from Replit; all routes use realistic simulated fallb
 - `/` — Dashboard (live market data, RSI gauge, signal badge, recent signals)
 - `/signals` — Signal History (table of past signals)
 - `/trade` — Trade Console (execute simulated trades, P&L tracker)
+- `/exchanges` — Exchange Connections (Binance / Bybit API key management)
+
+## Authentication
+
+Single-account owner login with a signed httpOnly session cookie (`upxai_session`, 7-day TTL, HMAC-SHA256).
+
+- Env vars (with dev defaults):
+  - `UPXAI_ADMIN_USER` (default `owner`)
+  - `UPXAI_ADMIN_PASSWORD` (default `genesis-engine`)
+  - `UPXAI_SESSION_SECRET` (default dev-only secret — must be set in production)
+- Auth routes: `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`
+- Protected routes (return 401 without a valid cookie): `/api/exchanges*`, `/api/trade`, `/api/signal`, `/api/signals/history`, `/api/market-data`
+- Public routes: `/api/healthz`, `/api/auth/*`
+- Exchange-store records are namespaced by `userId`. Legacy flat `data/exchanges.json` is migrated on first read into the default `owner` namespace.
+- Frontend gates the whole app behind `AuthProvider` (`src/lib/auth.tsx`); `pages/login.tsx` renders when unauthenticated; header shows current username and a Sign Out button.
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.

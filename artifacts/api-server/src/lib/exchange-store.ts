@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 import { fileURLToPath } from "url";
+import { SINGLE_USER_ID } from "./session";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -58,7 +59,8 @@ interface PersistedRecord extends Omit<ExchangeRecord, "apiSecret"> {
   apiSecretCipher: string;
 }
 
-type Store = Partial<Record<ExchangeId, PersistedRecord>>;
+type UserStore = Partial<Record<ExchangeId, PersistedRecord>>;
+type Store = Record<string, UserStore>;
 
 // In production, fail fast if the operator hasn't set an explicit encryption
 // key — never silently fall back to a predictable default.
@@ -99,12 +101,35 @@ function decrypt(payload: string): string {
   return Buffer.concat([decipher.update(ct), decipher.final()]).toString("utf8");
 }
 
+function isLegacyFlatStore(parsed: unknown): parsed is UserStore {
+  if (!parsed || typeof parsed !== "object") return false;
+  // Legacy flat shape: top-level keys are exchange ids and the values look
+  // like persisted records (have an `apiSecretCipher` string).
+  for (const key of Object.keys(parsed as Record<string, unknown>)) {
+    if (key !== "binance" && key !== "bybit") return false;
+    const v = (parsed as Record<string, unknown>)[key];
+    if (!v || typeof v !== "object") return false;
+    if (typeof (v as Record<string, unknown>).apiSecretCipher !== "string") {
+      return false;
+    }
+  }
+  return Object.keys(parsed as Record<string, unknown>).length > 0;
+}
+
 function load(): Store {
   ensureDir();
   if (!fs.existsSync(storeFile)) return {};
   try {
     const raw = fs.readFileSync(storeFile, "utf-8");
-    return JSON.parse(raw) as Store;
+    const parsed = JSON.parse(raw) as unknown;
+    if (isLegacyFlatStore(parsed)) {
+      // One-time migration: pre-auth records belong to the single owner.
+      const migrated: Store = { [SINGLE_USER_ID]: parsed };
+      save(migrated);
+      return migrated;
+    }
+    if (!parsed || typeof parsed !== "object") return {};
+    return parsed as Store;
   } catch {
     return {};
   }
@@ -130,8 +155,11 @@ export function maskKey(key: string): string {
   return "••••••" + key.slice(-4);
 }
 
-export function getRecord(exchange: ExchangeId): ExchangeRecord | undefined {
-  const p = load()[exchange];
+export function getRecord(
+  userId: string,
+  exchange: ExchangeId,
+): ExchangeRecord | undefined {
+  const p = load()[userId]?.[exchange];
   if (!p) return undefined;
   try {
     return toMemory(p);
@@ -140,28 +168,43 @@ export function getRecord(exchange: ExchangeId): ExchangeRecord | undefined {
   }
 }
 
-export function setRecord(input: Omit<ExchangeRecord, "version"> & { version?: string }): ExchangeRecord {
+export function setRecord(
+  userId: string,
+  input: Omit<ExchangeRecord, "version"> & { version?: string },
+): ExchangeRecord {
   const store = load();
+  const userStore: UserStore = store[userId] ?? {};
   const record: ExchangeRecord = {
     ...input,
     version: crypto.randomUUID(),
   };
-  store[record.exchange] = toPersisted(record);
+  userStore[record.exchange] = toPersisted(record);
+  store[userId] = userStore;
   save(store);
   return record;
 }
 
-export function deleteRecord(exchange: ExchangeId): void {
+export function deleteRecord(userId: string, exchange: ExchangeId): void {
   const store = load();
-  delete store[exchange];
+  const userStore = store[userId];
+  if (!userStore) return;
+  delete userStore[exchange];
+  if (Object.keys(userStore).length === 0) {
+    delete store[userId];
+  } else {
+    store[userId] = userStore;
+  }
   save(store);
 }
 
-export function listSummaries(): Array<Omit<ExchangeRecord, "apiSecret">> {
-  const store = load();
+export function listSummaries(
+  userId: string,
+): Array<Omit<ExchangeRecord, "apiSecret">> {
+  const userStore = load()[userId];
+  if (!userStore) return [];
   const out: Array<Omit<ExchangeRecord, "apiSecret">> = [];
-  for (const key of Object.keys(store) as ExchangeId[]) {
-    const p = store[key];
+  for (const key of Object.keys(userStore) as ExchangeId[]) {
+    const p = userStore[key];
     if (!p) continue;
     const { apiSecretCipher: _ignored, ...rest } = p;
     void _ignored;
@@ -175,13 +218,14 @@ export function listSummaries(): Array<Omit<ExchangeRecord, "apiSecret">> {
  * Returns true if the update was applied; false if the credentials have been rotated.
  */
 export function updateTestResult(
+  userId: string,
   exchange: ExchangeId,
   expectedVersion: string,
   status: "ok" | "error",
   message: string,
 ): boolean {
   const store = load();
-  const rec = store[exchange];
+  const rec = store[userId]?.[exchange];
   if (!rec || rec.version !== expectedVersion) return false;
   rec.lastTestedAt = new Date().toISOString();
   rec.lastTestStatus = status;

@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./authSession";
+export * from "./authUser";
 export * from "./errorResponse";
 export * from "./exchangeCredentialsRequest";
 export * from "./exchangeListResponse";
@@ -17,6 +19,8 @@ export * from "./exchangeTestResponseExchange";
 export * from "./getMarketDataParams";
 export * from "./getSignalParams";
 export * from "./healthStatus";
+export * from "./loginRequest";
+export * from "./logoutResult";
 export * from "./marketDataResponse";
 export * from "./signalHistoryItem";
 export * from "./signalHistoryItemSignal";

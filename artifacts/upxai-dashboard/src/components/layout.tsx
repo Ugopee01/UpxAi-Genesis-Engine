@@ -1,9 +1,12 @@
 import { Link, useLocation } from "wouter";
-import { Activity, History, CandlestickChart, Plug } from "lucide-react";
+import { Activity, History, CandlestickChart, Plug, LogOut, User } from "lucide-react";
 import { useListExchanges, getListExchangesQueryKey } from "@workspace/api-client-react";
+import { useAuth } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
+  const { user, signOut } = useAuth();
 
   const { data: exchangeData } = useListExchanges({
     query: { queryKey: getListExchangesQueryKey(), refetchInterval: 60000 },
@@ -76,6 +79,23 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <span className="text-muted-foreground hidden sm:inline">ENGINE: <span className="text-green-400">ONLINE</span></span>
               <span className="text-green-400 sm:hidden">LIVE</span>
             </div>
+            {user && (
+              <div className="hidden md:flex items-center gap-1.5 text-xs font-mono border border-border/50 bg-muted/30 px-2.5 py-1 rounded-md text-muted-foreground">
+                <User className="h-3 w-3" />
+                <span data-testid="header-username" className="text-foreground">{user.username}</span>
+              </div>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void signOut()}
+              data-testid="sign-out-button"
+              className="h-8 px-2.5 text-xs font-mono uppercase tracking-widest text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10"
+              title="Sign out"
+            >
+              <LogOut className="h-3.5 w-3.5 md:mr-1.5" />
+              <span className="hidden md:inline">Sign Out</span>
+            </Button>
           </div>
         </div>
       </header>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactElement } from "react";
 import {
   useListExchanges,
   useConnectExchange,
@@ -53,7 +53,7 @@ function BybitLogo({ className = "" }: { className?: string }) {
 
 const EXCHANGE_META: Record<
   string,
-  { gradient: string; tagline: string; Logo: ({ className }: { className?: string }) => JSX.Element }
+  { gradient: string; tagline: string; Logo: ({ className }: { className?: string }) => ReactElement }
 > = {
   binance: {
     gradient: "from-yellow-500/20 via-amber-500/5 to-transparent",
@@ -219,7 +219,7 @@ export default function Exchanges() {
             const meta = EXCHANGE_META[ex.exchange] ?? {
               gradient: "from-primary/10 to-transparent",
               tagline: "",
-              Logo: null as unknown as ({ className }: { className?: string }) => JSX.Element,
+              Logo: null as unknown as ({ className }: { className?: string }) => ReactElement,
             };
             const Logo = meta.Logo;
             return (

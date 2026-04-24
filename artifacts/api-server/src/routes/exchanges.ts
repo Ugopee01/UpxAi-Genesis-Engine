@@ -45,8 +45,9 @@ function toStatus(exchange: ExchangeId, rec?: Omit<ExchangeRecord, "apiSecret">)
   };
 }
 
-router.get("/exchanges", (_req, res) => {
-  const summaries = listSummaries();
+router.get("/exchanges", (req, res) => {
+  const userId = req.user!.id;
+  const summaries = listSummaries(userId);
   const map = new Map(summaries.map((s) => [s.exchange, s]));
   const exchanges = SUPPORTED.map((id) => toStatus(id, map.get(id)));
   const connectedCount = exchanges.filter((e) => e.configured).length;
@@ -54,6 +55,7 @@ router.get("/exchanges", (_req, res) => {
 });
 
 router.post("/exchanges/:exchange/connect", (req, res) => {
+  const userId = req.user!.id;
   const exchange = req.params.exchange;
   if (!isExchangeId(exchange)) {
     return res.status(400).json({ error: "Unsupported exchange" });
@@ -66,7 +68,7 @@ router.post("/exchanges/:exchange/connect", (req, res) => {
   if (apiKey.length < 8 || apiSecret.length < 8) {
     return res.status(400).json({ error: "apiKey and apiSecret look too short" });
   }
-  const saved = setRecord({
+  const saved = setRecord(userId, {
     exchange,
     apiKey,
     apiSecret,
@@ -76,11 +78,12 @@ router.post("/exchanges/:exchange/connect", (req, res) => {
 });
 
 router.post("/exchanges/:exchange/disconnect", (req, res) => {
+  const userId = req.user!.id;
   const exchange = req.params.exchange;
   if (!isExchangeId(exchange)) {
     return res.status(400).json({ error: "Unsupported exchange" });
   }
-  deleteRecord(exchange);
+  deleteRecord(userId, exchange);
   return res.json(toStatus(exchange, undefined));
 });
 
@@ -151,18 +154,19 @@ async function testBybit(rec: ExchangeRecord): Promise<{ success: boolean; messa
 }
 
 router.post("/exchanges/:exchange/test", async (req, res) => {
+  const userId = req.user!.id;
   const exchange = req.params.exchange;
   if (!isExchangeId(exchange)) {
     return res.status(400).json({ error: "Unsupported exchange" });
   }
-  const rec = getRecord(exchange);
+  const rec = getRecord(userId, exchange);
   if (!rec) {
     return res.status(400).json({ error: "Not connected — save credentials first." });
   }
   const versionAtRead = rec.version;
   const result = exchange === "binance" ? await testBinance(rec) : await testBybit(rec);
   // Only persist the test result if credentials haven't been rotated mid-call.
-  updateTestResult(exchange, versionAtRead, result.success ? "ok" : "error", result.message);
+  updateTestResult(userId, exchange, versionAtRead, result.success ? "ok" : "error", result.message);
   return res.json({
     exchange,
     success: result.success,

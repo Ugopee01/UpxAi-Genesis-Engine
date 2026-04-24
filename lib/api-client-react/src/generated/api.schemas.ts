@@ -142,6 +142,23 @@ export interface ExchangeTestResponse {
   testedAt: string;
 }
 
+export interface LoginRequest {
+  username: string;
+  password: string;
+}
+
+export interface AuthUser {
+  username: string;
+}
+
+export interface AuthSession {
+  user: AuthUser;
+}
+
+export interface LogoutResult {
+  ok: boolean;
+}
+
 export type GetSignalParams = {
   symbol?: string;
 };

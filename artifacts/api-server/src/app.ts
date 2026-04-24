@@ -1,10 +1,12 @@
 import express, { type Express, type Request, type Response } from "express";
+import cookieParser from "cookie-parser";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import path from "path";
 import { fileURLToPath } from "url";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { loadUser } from "./middlewares/require-auth";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dashboardDist = path.resolve(__dirname, "../../..", "artifacts/upxai-dashboard/dist/public");
@@ -31,10 +33,11 @@ app.use(
   }),
 );
 app.use(cors());
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use("/api", router);
+app.use("/api", loadUser, router);
 
 app.use(express.static(dashboardDist));
 

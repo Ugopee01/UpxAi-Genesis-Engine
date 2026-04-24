@@ -8,6 +8,37 @@
 import * as zod from "zod";
 
 /**
+ * Establishes a session cookie on success
+ * @summary Sign in with username and password
+ */
+export const LoginBody = zod.object({
+  username: zod.string(),
+  password: zod.string(),
+});
+
+export const LoginResponse = zod.object({
+  user: zod.object({
+    username: zod.string(),
+  }),
+});
+
+/**
+ * @summary Sign out and clear the session cookie
+ */
+export const LogoutResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Get the currently signed-in user
+ */
+export const GetCurrentUserResponse = zod.object({
+  user: zod.object({
+    username: zod.string(),
+  }),
+});
+
+/**
  * Returns server health status
  * @summary Health check
  */

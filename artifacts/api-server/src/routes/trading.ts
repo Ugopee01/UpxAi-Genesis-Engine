@@ -113,6 +113,7 @@ router.get("/signal", async (req, res) => {
 });
 
 router.post("/trade", async (req, res) => {
+  const userId = req.user!.id;
   const symbol = (req.body?.symbol as string) || "BTCUSDT";
   const liveMode = req.body?.liveMode === true;
   const result = await computeSignal(symbol);
@@ -126,7 +127,7 @@ router.post("/trade", async (req, res) => {
   // connected exchange".
   let targetExchange: string | undefined;
   if (liveMode) {
-    const connected = listSummaries();
+    const connected = listSummaries(userId);
     // Prefer an exchange that has passed its test, otherwise fall back to any connected one.
     targetExchange =
       connected.find((s) => s.lastTestStatus === "ok")?.exchange ?? connected[0]?.exchange;
