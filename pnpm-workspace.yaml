@@ -157,3 +157,11 @@ overrides:
   # drizzle-kit uses esbuild internally on an older version that's vulnerable, this overrides it
   "@esbuild-kit/esm-loader": "npm:tsx@^4.21.0"
   esbuild: "0.27.3"
+  # Security patches for transitive dependencies (see Task #9). All are
+  # patch-level bumps that fix published GHSA advisories.
+  brace-expansion: ">=2.0.3"
+  lodash: ">=4.18.0"
+  path-to-regexp: ">=8.4.0"
+  picomatch: ">=4.0.4"
+  postcss: ">=8.5.10"
+  yaml: ">=2.8.3"
