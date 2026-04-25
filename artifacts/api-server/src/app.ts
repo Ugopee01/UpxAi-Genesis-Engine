@@ -13,6 +13,12 @@ const dashboardDist = path.resolve(__dirname, "../../..", "artifacts/upxai-dashb
 
 const app: Express = express();
 
+// Trust X-Forwarded-* headers only when they come from a hop on a private /
+// loopback network (e.g. Replit's mTLS proxy on the same host). Trusting the
+// header unconditionally would let an external attacker spoof their client IP
+// and defeat per-IP rate limiting on /api/auth/login.
+app.set("trust proxy", "loopback, linklocal, uniquelocal");
+
 app.use(
   pinoHttp({
     logger,
